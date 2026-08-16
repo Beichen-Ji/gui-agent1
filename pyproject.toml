@@ -1,0 +1,31 @@
+[project]
+name = "gui-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "BeichenJ", email = "bji061@uottawa.ca" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "mss>=10.2.0",
+    "numpy>=2.4.6",
+    "opencv-python-headless<5",
+    "pillow>=12.3.0",
+    "pyautogui>=0.9.54",
+    "pydantic>=2.13.4",
+]
+
+[project.scripts]
+gui-agent = "gui_agent:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.3",
+]
