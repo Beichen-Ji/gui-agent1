@@ -4,6 +4,7 @@ from gui_agent.perception.capture import (
     InvalidRegionError,
     ScreenCapture,
 )
+from gui_agent.perception.localization import MatchMode, annotate_detections, find_text
 from gui_agent.perception.ocr import (
     EasyOCRBackend,
     OCRBackend,
@@ -22,4 +23,7 @@ __all__ = [
     "OCRInferenceError",
     "OCRInitializationError",
     "ScreenCapture",
+    "MatchMode",
+    "annotate_detections",
+    "find_text",
 ]
