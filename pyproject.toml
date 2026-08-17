@@ -1,19 +1,26 @@
 [project]
 name = "gui-agent"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "Safe desktop perception and control foundations for a GUI agent"
 readme = "README.md"
 authors = [
-    { name = "BeichenJ", email = "bji061@uottawa.ca" }
+    { name = "Beichen-Ji", email = "bji7@uwo.ca" }
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.12"
 dependencies = [
-    "mss>=10.2.0",
-    "numpy>=2.4.6",
-    "opencv-python-headless<5",
-    "pillow>=12.3.0",
-    "pyautogui>=0.9.54",
-    "pydantic>=2.13.4",
+    "mss>=10.1,<11",
+    "numpy>=2,<3",
+    "opencv-python-headless>=4.11,<5",
+    "pillow>=11,<13",
+    "pyautogui>=0.9.54,<1",
+    "pynput>=1.8,<2",
+]
+
+[project.optional-dependencies]
+ocr = [
+    "easyocr>=1.7.2,<2",
+    "torch>=2.7,<3",
+    "torchvision>=0.22,<1",
 ]
 
 [project.scripts]
@@ -25,7 +32,39 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.1.1",
-    "pytest-cov>=7.1.0",
-    "ruff>=0.16.3",
+    "mypy>=1.15,<2",
+    "pytest>=8,<10",
+    "pytest-cov>=6,<8",
+    "ruff>=0.11,<1",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-markers"
+markers = [
+    "integration: requires a real desktop, GPU, model download, or external resource",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+exclude = ["^\\.venv/"]
+
+[[tool.mypy.overrides]]
+module = ["cv2", "easyocr", "mss", "mss.*", "pyautogui", "pynput", "pynput.*"]
+ignore_missing_imports = true
