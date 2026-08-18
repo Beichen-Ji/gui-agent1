@@ -75,7 +75,7 @@ uv run mypy src tests examples
 uv run pytest -m "not integration" --cov=gui_agent --cov-report=term-missing
 ```
 
-2026-08-18 本机结果为 153 项测试全部通过、总代码覆盖率 93%。真实桌面只做了一次隐私安全的内存探针；详细环境与性能数据见 [Week 2 测试报告](docs/test-reports/week2-test-report.md)。
+2026-08-18 本机结果为 154 项测试全部通过、总代码覆盖率 93%。真实桌面只做了一次隐私安全的内存探针；详细环境与性能数据见 [Week 2 测试报告](docs/test-reports/week2-test-report.md)。
 
 ## 目录
 

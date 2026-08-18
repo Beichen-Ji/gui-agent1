@@ -139,7 +139,7 @@ class EasyOCRBackend:
         try:
             for raw_result in raw_results:
                 detection = cls._normalize_one(raw_result, origin)
-                if detection.confidence >= min_confidence:
+                if detection is not None and detection.confidence >= min_confidence:
                     detections.append(detection)
         except OCRInferenceError:
             raise
@@ -148,12 +148,14 @@ class EasyOCRBackend:
         return detections
 
     @staticmethod
-    def _normalize_one(raw_result: object, origin: Point) -> OCRDetection:
+    def _normalize_one(raw_result: object, origin: Point) -> OCRDetection | None:
         if not isinstance(raw_result, (list, tuple)) or len(raw_result) != 3:
             raise OCRInferenceError("EasyOCR returned a malformed result tuple")
         raw_box, raw_text, raw_confidence = raw_result
-        if not isinstance(raw_text, str) or not raw_text.strip():
+        if not isinstance(raw_text, str):
             raise OCRInferenceError("EasyOCR returned malformed text")
+        if not raw_text.strip():
+            return None
         try:
             confidence = float(raw_confidence)
         except (TypeError, ValueError) as error:
