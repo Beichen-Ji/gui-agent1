@@ -4,8 +4,13 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 .coverage
+coverage.xml
 htmlcov/
+.python/
+.tools/
+.uv-cache/
 
 # Environment and secrets
 .env
@@ -21,9 +26,15 @@ artifacts/*
 data/
 models/
 checkpoints/
+.EasyOCR/
 *.pth
 *.pt
 *.onnx
+screenshots/
+annotations/
+*.png
+*.jpg
+*.jpeg
 
 # IDE
 .vscode/
