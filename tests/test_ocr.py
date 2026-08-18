@@ -110,6 +110,22 @@ def test_easyocr_normalizes_filters_and_offsets_results() -> None:
     assert result == [OCRDetection("Save", 0.91, BoundingBox(-99, 52, -88, 59))]
 
 
+def test_easyocr_skips_blank_text_without_losing_valid_detections() -> None:
+    raw = [
+        ([[1, 1], [3, 1], [3, 3], [1, 3]], "", 0.0),
+        ([[5, 5], [15, 5], [15, 10], [5, 10]], "Save", 0.9),
+        ([[20, 20], [25, 20], [25, 25], [20, 25]], "   ", 0.1),
+    ]
+    backend = EasyOCRBackend(
+        reader_factory=ReaderFactoryProbe(FakeReader(raw)),
+        gpu=False,
+    )
+
+    assert backend.recognize(color_image()) == [
+        OCRDetection("Save", 0.9, BoundingBox(5, 5, 15, 10))
+    ]
+
+
 def test_easyocr_creates_reader_once_and_passes_complete_call_shape() -> None:
     reader = FakeReader()
     factory = ReaderFactoryProbe(reader)
@@ -227,7 +243,7 @@ def test_easyocr_wraps_inference_error() -> None:
     [
         ([], "Save", 0.9),
         ([[1, 2]], "Save", 0.9),
-        ([[1, 2], [4, 5]], "   ", 0.9),
+        ([[1, 2], [4, 2], [4, 5], [1, 5]], None, 0.9),
         ([[1, 2], [4, 5]], "Save", 1.1),
         ("not-a-box", "Save", 0.9),
         ("missing confidence", "Save"),

@@ -38,13 +38,13 @@
 uv run pytest -m "not integration" --cov=gui_agent --cov-report=term-missing
 ```
 
-结果：153 项全部通过，耗时 0.32 秒；普通测试没有截图、模型下载或真实输入。
+结果：154 项全部通过；普通测试没有截图、模型下载或真实输入。
 
 | 测试文件 | 数量 | 主要覆盖 |
 |---|---:|---|
 | `test_types.py` | 29 | 坐标、区域、截图/OCR 类型校验 |
 | `test_capture.py` | 12 | MSS 参数、负原点、BGRA→BGR、保存和异常 |
-| `test_ocr.py` | 26 | 结果标准化、阈值、GPU 选择、错误与 Windows 下载编码回归 |
+| `test_ocr.py` | 27 | 结果标准化、空文字候选过滤、阈值、GPU 选择、错误与 Windows 下载编码回归 |
 | `test_localization.py` | 19 | 文本匹配、颜色、字体、原图不变、原点换算 |
 | `test_control.py` | 47 | 所有动作、dry-run、实时 fake、fail-safe、边界和校验 |
 | `test_examples.py` | 20 | 确认短语、无输出默认、CLI 帮助和端到端安全门 |
@@ -114,7 +114,7 @@ uv run pytest -m "not integration" --cov=gui_agent --cov-report=term-missing
 
 GitHub Actions 使用 Windows runner 和 Python 3.11，执行锁文件同步、Ruff、mypy 和普通 pytest/coverage。CI 不安装 `ocr` extra，因此不会下载 EasyOCR/PyTorch 模型；OCR、MSS 和输入动作都由 fake 覆盖。
 
-本机另建全新的 CI 虚拟环境验证了这一配置：只安装基础/开发组共 29 个包，确认 `easyocr` 和 `torch` 均不存在，然后 Ruff、mypy 以及 153 项测试/93% 覆盖率仍全部通过。
+本机此前另建全新的 CI 虚拟环境验证了这一配置：只安装基础/开发组共 29 个包，确认 `easyocr` 和 `torch` 均不存在；当时 Ruff、mypy 以及 153 项测试/93% 覆盖率全部通过。
 
 ## 7. 已知限制
 
