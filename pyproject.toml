@@ -66,5 +66,5 @@ strict = true
 exclude = ["^\\.venv/"]
 
 [[tool.mypy.overrides]]
-module = ["cv2", "easyocr", "mss", "mss.*", "pyautogui", "pynput", "pynput.*"]
+module = ["cv2", "easyocr", "mss", "mss.*", "pyautogui", "pynput", "pynput.*", "torch"]
 ignore_missing_imports = true

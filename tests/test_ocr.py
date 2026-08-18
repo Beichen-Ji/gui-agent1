@@ -1,9 +1,12 @@
+import sys
 from collections.abc import Sequence
+from types import ModuleType
 from typing import cast
 
 import numpy as np
 import pytest
 
+import gui_agent.perception.ocr as ocr_module
 from gui_agent.perception.ocr import (
     EasyOCRBackend,
     OCRBackend,
@@ -56,8 +59,38 @@ class ReaderFactoryProbe:
         return self.reader
 
 
+class FakeEasyOCRModule(ModuleType):
+    def __init__(self, reader: FakeReader) -> None:
+        super().__init__("easyocr")
+        self.reader = reader
+        self.calls: list[tuple[list[str], bool | str, bool]] = []
+
+    def Reader(  # noqa: N802
+        self,
+        languages: list[str],
+        *,
+        gpu: bool | str,
+        verbose: bool,
+    ) -> FakeReader:
+        self.calls.append((languages, gpu, verbose))
+        return self.reader
+
+
 def color_image() -> ImageArray:
     return np.zeros((30, 40, 3), dtype=np.uint8)
+
+
+def test_default_easyocr_reader_disables_console_progress(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reader = FakeReader()
+    easyocr_module = FakeEasyOCRModule(reader)
+    monkeypatch.setitem(sys.modules, "easyocr", easyocr_module)
+
+    result = ocr_module._default_reader_factory(["ch_sim", "en"], True)
+
+    assert result is reader
+    assert easyocr_module.calls == [(["ch_sim", "en"], True, False)]
 
 
 def test_easyocr_normalizes_filters_and_offsets_results() -> None:

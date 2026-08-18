@@ -52,7 +52,7 @@ def _default_reader_factory(languages: list[str], gpu: bool | str) -> OCRReader:
         raise OCRDependencyError(
             "EasyOCR is not installed; run `uv sync --extra ocr`"
         ) from error
-    return cast(OCRReader, easyocr.Reader(languages, gpu=gpu))
+    return cast(OCRReader, easyocr.Reader(languages, gpu=gpu, verbose=False))
 
 
 def _default_cuda_available() -> bool:
