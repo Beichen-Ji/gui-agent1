@@ -110,11 +110,11 @@ uv run pytest -m integration tests/integration/test_local_qwen.py -v -s
 
 | 指标 | 实测值 |
 |---|---:|
-| 模型加载 | 7.455 s |
-| 计划推理 | 2.600 s |
-| 动作推理 | 4.020 s |
+| 模型加载 | 7.813 s |
+| 计划推理 | 2.735 s |
+| 动作推理 | 3.928 s |
 | PyTorch 峰值分配显存 | 9.021 GiB |
-| pytest | 1 passed in 15.56 s |
+| pytest | 1 passed in 16.13 s |
 
 这些数字只代表本机、当前驱动、640×360 合成图和短输出；不是通用吞吐或延迟保证。
 
@@ -136,10 +136,27 @@ git diff --check
 - Ruff：通过；
 - mypy strict：40 个源文件通过；
 - pytest：收集 196 项，1 个真实模型集成测试取消选择，195 项普通测试全部通过；
-- 覆盖率：90%（1010 statements，99 missed）；
+- 覆盖率：90%（1014 statements，101 missed）；
 - `git diff --check`：通过。
 
 普通门禁不联网、不下载/加载模型、不截取屏幕、不执行鼠标键盘动作。真实 Qwen 测试由独立环境变量显式启用，并已按第 5 节单独通过。
+
+### 6.1 干净 CI 回归
+
+草稿 PR 的首次 GitHub Actions 运行暴露了本机全量环境没有显示的问题：旧 workflow 只安装基础/dev 依赖，因此 mypy 找不到第 3 周所需的 Pydantic 和 `langchain-openai`；同时 Qwen 单元测试曾在文件顶层导入 torch，会迫使普通 CI 安装大模型依赖。
+
+修复后，workflow 安装轻量 `agent` extra 并把 `scripts` 纳入 mypy；fake Qwen 测试注入 dtype，真实 integration 测试只在 `GUI_AGENT_RUN_LOCAL_QWEN=1` 后导入 torch。使用以下隔离命令模拟全新 CI：
+
+```powershell
+uv run --isolated --locked --group dev --extra agent `
+  python -c "import importlib.util; assert importlib.util.find_spec('torch') is None"
+uv run --isolated --locked --group dev --extra agent ruff check .
+uv run --isolated --locked --group dev --extra agent mypy src tests examples scripts
+uv run --isolated --locked --group dev --extra agent `
+  pytest -m "not integration" --cov=gui_agent --cov-report=term-missing
+```
+
+隔离环境确认 torch 未安装；Ruff、mypy 和 195 项普通测试仍全部通过。
 
 ## 7. 隐私与安全结论
 

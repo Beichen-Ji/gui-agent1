@@ -2,7 +2,6 @@ import os
 import time
 
 import pytest
-import torch
 
 from examples.model_smoke import synthetic_observation
 from gui_agent.agent.qwen import QwenTransformersPlanner
@@ -13,6 +12,9 @@ from gui_agent.agent.types import AgentState
 def test_local_qwen_produces_a_plan_and_action_from_synthetic_ui() -> None:
     if os.environ.get("GUI_AGENT_RUN_LOCAL_QWEN") != "1":
         pytest.skip("set GUI_AGENT_RUN_LOCAL_QWEN=1 to load the real local model")
+
+    import torch
+
     if not torch.cuda.is_available():
         pytest.skip("CUDA is required for the local Qwen integration test")
 

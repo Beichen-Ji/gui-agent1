@@ -1,11 +1,11 @@
 import base64
 import io
+import sys
 from datetime import UTC, datetime
 from typing import Any, cast
 
 import numpy as np
 import pytest
-import torch
 from PIL import Image
 from pydantic import BaseModel
 
@@ -321,10 +321,14 @@ def test_qwen_planner_uses_in_memory_resized_image_and_parses_json() -> None:
     assert model.generate_calls[0]["do_sample"] is False
 
 
-def test_qwen_planner_loads_model_lazily_with_safe_defaults() -> None:
+def test_qwen_planner_loads_model_lazily_without_requiring_torch_for_fakes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     calls: list[tuple[str, str, dict[str, object]]] = []
     processor = ProcessorProbe([task_plan().model_dump_json()])
     model = ModelProbe()
+    dtype_marker = object()
+    monkeypatch.setitem(cast(dict[str, Any], sys.modules), "torch", None)
 
     def processor_loader(model_name: str, **kwargs: object) -> object:
         calls.append(("processor", model_name, dict(kwargs)))
@@ -337,6 +341,7 @@ def test_qwen_planner_loads_model_lazily_with_safe_defaults() -> None:
     planner = QwenTransformersPlanner(
         processor_loader=processor_loader,
         model_loader=model_loader,
+        model_dtype=dtype_marker,
     )
     assert calls == []
 
@@ -344,7 +349,7 @@ def test_qwen_planner_loads_model_lazily_with_safe_defaults() -> None:
     assert calls[0] == ("processor", "Qwen/Qwen3-VL-4B-Instruct", {})
     assert calls[1][0:2] == ("model", "Qwen/Qwen3-VL-4B-Instruct")
     assert calls[1][2]["device_map"] == "auto"
-    assert calls[1][2]["dtype"] is torch.bfloat16
+    assert calls[1][2]["dtype"] is dtype_marker
 
 
 def test_qwen_planner_preserves_malformed_json_as_cause() -> None:

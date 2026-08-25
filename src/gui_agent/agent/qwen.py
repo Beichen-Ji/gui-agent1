@@ -44,6 +44,7 @@ class QwenTransformersPlanner:
         model: object | None = None,
         processor_loader: Callable[..., object] = _default_processor_loader,
         model_loader: Callable[..., object] = _default_model_loader,
+        model_dtype: object | None = None,
         max_image_side: int = 1280,
         max_new_tokens: int = 512,
     ) -> None:
@@ -60,18 +61,23 @@ class QwenTransformersPlanner:
         self._model = model
         self._processor_loader = processor_loader
         self._model_loader = model_loader
+        self._model_dtype = model_dtype
         self._max_image_side = max_image_side
         self._max_new_tokens = max_new_tokens
 
     def _ensure_loaded(self) -> tuple[Any, Any]:
         if self._processor is None or self._model is None:
-            import torch
+            dtype = self._model_dtype
+            if dtype is None:
+                import torch
+
+                dtype = torch.bfloat16
 
             try:
                 self._processor = self._processor_loader(self.model_name)
                 self._model = self._model_loader(
                     self.model_name,
-                    dtype=torch.bfloat16,
+                    dtype=dtype,
                     device_map="auto",
                 )
             except Exception as exc:
