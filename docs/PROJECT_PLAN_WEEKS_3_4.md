@@ -478,15 +478,15 @@ class MultimodalPlanner(Protocol):
     def next_action(self, state: AgentState) -> AgentDecision: ...
 ```
 
-- [ ] **Step 1: 写 fake planner 和提示词失败测试**
+- [x] **Step 1: 写 fake planner 和提示词失败测试**
 
 测试提示词必须包含目标、允许动作、屏幕尺寸、OCR 摘要、当前步骤和最近结果；不得包含 API key、绝对本地数据路径或隐藏思维链要求。
 
-- [ ] **Step 2: 实现共享 prompt builder 和 `FakePlanner`**
+- [x] **Step 2: 实现共享 prompt builder 和 `FakePlanner`**
 
 `FakePlanner` 接收预设计划与决策队列，用于所有普通 CI 端到端测试。
 
-- [ ] **Step 3: 验证**
+- [x] **Step 3: 验证**
 
 ```powershell
 uv run pytest tests/test_agent_planner.py -v
@@ -494,7 +494,7 @@ uv run ruff check src/gui_agent/agent tests/test_agent_planner.py
 uv run mypy src/gui_agent/agent tests/test_agent_planner.py
 ```
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```powershell
 git add src/gui_agent/agent/prompts.py src/gui_agent/agent/planner.py tests/test_agent_planner.py

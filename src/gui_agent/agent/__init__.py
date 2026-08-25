@@ -1,3 +1,5 @@
+from gui_agent.agent.planner import FakePlanner, MultimodalPlanner, PlannerError
+from gui_agent.agent.prompts import build_action_prompt, build_plan_prompt
 from gui_agent.agent.types import (
     AgentAction,
     AgentDecision,
@@ -21,13 +23,18 @@ __all__ = [
     "AgentState",
     "ClickAction",
     "DragAction",
+    "FakePlanner",
     "FinishAction",
     "HotkeyAction",
+    "MultimodalPlanner",
     "Observation",
+    "PlannerError",
     "ScrollAction",
     "StepResult",
     "TaskPlan",
     "TaskStep",
     "TypeTextAction",
     "WaitAction",
+    "build_action_prompt",
+    "build_plan_prompt",
 ]
