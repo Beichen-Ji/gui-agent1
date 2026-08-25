@@ -512,19 +512,19 @@ git commit -m "feat: add structured multimodal planner boundary"
 
 **Produces:** `LangChainPlanner` 和 `QwenTransformersPlanner`，二者满足同一 `MultimodalPlanner` 协议。
 
-- [ ] **Step 1: 写依赖注入测试**
+- [x] **Step 1: 写依赖注入测试**
 
 测试使用 fake LangChain chat model 和 fake Transformers pipeline；断言截图被编码为图像消息、结构化输出被验证、模型错误保留原异常为 `__cause__`、未允许时拒绝远程图片。
 
-- [ ] **Step 2: 实现 OpenAI-compatible API 路径**
+- [x] **Step 2: 实现 OpenAI-compatible API 路径**
 
 `LangChainPlanner` 使用 `ChatOpenAI(model=..., base_url=..., api_key=...)` 和 `with_structured_output()`；只有 `allow_remote_image=True` 时才把截图编码成 data URL。
 
-- [ ] **Step 3: 实现 Windows 本地 Qwen 路径**
+- [x] **Step 3: 实现 Windows 本地 Qwen 路径**
 
-`QwenTransformersPlanner` 延迟加载 `AutoProcessor` 和 `AutoModelForImageTextToText`，默认模型为 `Qwen/Qwen3-VL-4B-Instruct`，使用 `torch.bfloat16`、`device_map="auto"`，并限制截图长边和模型输出 token 数以控制显存。
+`QwenTransformersPlanner` 延迟加载 `AutoProcessor` 和当前 Transformers/Qwen 官方接口 `AutoModelForMultimodalLM`，默认模型为 `Qwen/Qwen3-VL-4B-Instruct`，使用 `torch.bfloat16`、`device_map="auto"`，并限制截图长边和模型输出 token 数以控制显存。
 
-- [ ] **Step 4: 先运行合成图片 smoke test**
+- [x] **Step 4: 先运行合成图片 smoke test**
 
 ```powershell
 uv run python examples/model_smoke.py --provider qwen `
@@ -533,15 +533,18 @@ uv run python examples/model_smoke.py --provider qwen `
 
 预期：打印合法 `TaskPlan` 和单个 `AgentDecision`；不操作桌面。
 
-- [ ] **Step 5: 显式运行集成测试**
+- [x] **Step 5: 显式运行集成测试**
 
 ```powershell
-uv run pytest -m integration tests/integration/test_local_qwen.py -v
+$env:GUI_AGENT_RUN_LOCAL_QWEN="1"
+uv run pytest -m integration tests/integration/test_local_qwen.py -v -s
 ```
 
 记录首次模型下载、加载时间、单次推理时间、峰值显存和模型 revision，不记录真实屏幕内容。
 
-- [ ] **Step 6: 提交**
+2026-08-25 本机实测：模型 revision `ebb281ec70b05090aa6165b016eac8ec08e71b17`；加载 7.455 秒；计划推理 2.600 秒；动作推理 4.020 秒；PyTorch 峰值分配显存 9.021 GiB。合成图片 smoke test 与真实 CUDA 集成测试均通过。
+
+- [x] **Step 6: 提交**
 
 ```powershell
 git add src/gui_agent/agent examples/model_smoke.py tests/test_agent_planner.py tests/integration/test_local_qwen.py
