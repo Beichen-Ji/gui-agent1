@@ -365,7 +365,7 @@ git commit -m "chore: add Week 3 agent dependencies"
 
 **Produces:** `AgentAction`、`AgentDecision`、`TaskPlan`、`Observation`、`AgentState`、`NormalizedGUIRecord`、`DatasetManifest`。
 
-- [ ] **Step 1: 先写失败测试**
+- [x] **Step 1: 先写失败测试**
 
 覆盖合法动作 JSON、未知动作拒绝、坐标类型、文本长度、任务步骤数量、轨迹缺少动作、WebArena 任务缺少成功条件等行为。
 
@@ -375,18 +375,18 @@ uv run pytest tests/test_agent_types.py tests/test_dataset_schema.py -v
 
 预期：因模块尚不存在而失败。
 
-- [ ] **Step 2: 实现最小严格 schema**
+- [x] **Step 2: 实现最小严格 schema**
 
 实现第 6 节定义的类型；Pydantic 模型使用 `ConfigDict(extra="forbid", frozen=True)`，拒绝模型偷偷增加未定义字段。
 
-- [ ] **Step 3: 验证通过并检查类型**
+- [x] **Step 3: 验证通过并检查类型**
 
 ```powershell
 uv run pytest tests/test_agent_types.py tests/test_dataset_schema.py -v
 uv run mypy src/gui_agent/agent src/gui_agent/datasets tests/test_agent_types.py tests/test_dataset_schema.py
 ```
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```powershell
 git add src/gui_agent/agent src/gui_agent/datasets tests/test_agent_types.py tests/test_dataset_schema.py
