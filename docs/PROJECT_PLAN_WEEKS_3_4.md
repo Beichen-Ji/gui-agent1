@@ -558,11 +558,11 @@ git commit -m "feat: add local and API multimodal planners"
 - Create: `docs/test-reports/week3-agent-foundation-report.md`
 - Modify: `README.md`
 
-- [ ] **Step 1: 记录数据与模型执行方法**
+- [x] **Step 1: 记录数据与模型执行方法**
 
 文档必须包含数据源 revision、许可检查、磁盘占用、模型缓存位置、环境变量、本地/远程图片隐私差异、Windows 下不原生使用 vLLM 的原因。
 
-- [ ] **Step 2: 跑完整门禁**
+- [x] **Step 2: 跑完整门禁**
 
 ```powershell
 uv lock --check
@@ -572,7 +572,7 @@ uv run pytest -m "not integration" --cov=gui_agent --cov-report=term-missing
 git diff --check
 ```
 
-- [ ] **Step 3: 第 3 周验收**
+- [x] **Step 3: 第 3 周验收**
 
 - 三个数据适配器都能处理 fixture，真实来源每个至少成功处理 10 条。
 - `FakePlanner`、`LangChainPlanner`、`QwenTransformersPlanner` 满足同一接口。

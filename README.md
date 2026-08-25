@@ -1,6 +1,6 @@
-# GUI Agent：桌面感知与安全控制基础
+# GUI Agent：桌面感知、数据与多模态规划基础
 
-这是“大模型 GUI Agent”实习项目的第 1.6 节与第 2 周实现：用 Python 3.11、MSS、EasyOCR 和 PyAutoGUI 搭建桌面截图、文字识别、元素定位及安全控制基础。目前不接入大模型，也不包含第 1 周调研报告。
+这是“大模型 GUI Agent”实习项目第 1.6 节至第 3 周的实现：先用 MSS、EasyOCR 和 PyAutoGUI 建立桌面感知/安全控制，再加入公开 GUI 数据标准化、结构化 Agent schema，以及本地 Qwen 和 OpenAI-compatible 多模态 Planner。第 3 周尚不包含自动观察—执行循环，也不包含第 1 周调研报告。
 
 ## 已实现
 
@@ -10,9 +10,13 @@
 - 非破坏式 OCR 框、中心点、文字和置信度标注。
 - 默认 `dry_run=True` 的鼠标键盘控制器。
 - 截图、OCR、控制和端到端四个命令行演示。
+- ScreenAgent、Mind2Web、WebArena 三个公开数据源的确定性预处理与 manifest。
+- 严格、不可变的任务计划、动作、决策、观察和执行结果 schema。
+- 共享 `MultimodalPlanner` 接口的 fake、LangChain API 与本地 Qwen3-VL 实现。
+- 只使用合成界面的模型 smoke test；普通测试不会下载或加载模型。
 - Windows + Python 3.11 CI；普通 CI 不下载模型、不截图、不操作鼠标键盘。
 
-架构图、模块边界和安全设计见[桌面感知与控制设计](docs/superpowers/specs/2026-08-17-desktop-perception-control-design.md)。详细执行计划见[实现计划](docs/superpowers/plans/2026-08-17-desktop-perception-control.md)。
+架构图、模块边界和安全设计见[桌面感知与控制设计](docs/superpowers/specs/2026-08-17-desktop-perception-control-design.md)。第 3/4 周范围见[项目计划](docs/PROJECT_PLAN_WEEKS_3_4.md)，数据与模型运行命令见[模型 Provider 配置指南](docs/setup/model-provider-setup.md)。
 
 ## 安全规则
 
@@ -30,8 +34,13 @@
 
 ```powershell
 uv python install 3.11
-uv sync --locked --group dev --extra ocr
+uv sync --locked --group dev `
+  --extra ocr `
+  --extra agent `
+  --extra datasets `
+  --extra local-model
 $env:EASYOCR_MODULE_PATH = Join-Path $PWD "models\easyocr"
+$env:HF_HOME = Join-Path $PWD ".cache\huggingface"
 uv run python --version
 ```
 
@@ -54,6 +63,9 @@ uv sync --locked --group dev
 | 图片 OCR | `uv run python examples/ocr_demo.py artifacts/screen.png --gpu cuda` | 打印文字、置信度、框和中心点 |
 | 模拟点击 | `uv run python examples/control_demo.py --x 500 --y 300` | 只记录 dry-run 动作 |
 | 感知到控制 | `uv run python examples/perception_control_demo.py "保存" --monitor 1 --annotation artifacts/annotated.png` | 截图、OCR、查找、标注，并模拟唯一候选点击 |
+| 数据适配器帮助 | `uv run python scripts/prepare_gui_datasets.py --help` | 列出三个数据源及参数，不下载数据 |
+| fake Planner | `uv run python examples/model_smoke.py --provider fake --synthetic` | 对合成界面打印计划和动作，不加载模型 |
+| 本地 Qwen Planner | `uv run python examples/model_smoke.py --provider qwen --synthetic` | 首次下载模型；之后在本机 GPU 生成计划和动作 |
 
 查看所有选项：
 
@@ -62,6 +74,8 @@ uv run python examples/capture_demo.py --help
 uv run python examples/ocr_demo.py --help
 uv run python examples/control_demo.py --help
 uv run python examples/perception_control_demo.py --help
+uv run python examples/model_smoke.py --help
+uv run python scripts/prepare_gui_datasets.py --help
 ```
 
 不建议直接启用真实点击。确需本地验证时，在确认目标坐标和桌面状态后添加 `--execute`，再按提示输入完整确认短语。
@@ -71,17 +85,23 @@ uv run python examples/perception_control_demo.py --help
 ```powershell
 uv lock --check
 uv run ruff check .
-uv run mypy src tests examples
+uv run mypy src tests examples scripts
 uv run pytest -m "not integration" --cov=gui_agent --cov-report=term-missing
 ```
 
-2026-08-18 本机结果为 154 项测试全部通过、总代码覆盖率 93%。真实桌面只做了一次隐私安全的内存探针；详细环境与性能数据见 [Week 2 测试报告](docs/test-reports/week2-test-report.md)。
+2026-08-25 本机结果为 195 项普通测试全部通过、总覆盖率 90%；另有 1 项显式启用的真实 Qwen CUDA 集成测试通过。详细数据见 [Week 3 测试报告](docs/test-reports/week3-agent-foundation-report.md)；桌面感知与控制基线见 [Week 2 测试报告](docs/test-reports/week2-test-report.md)。
 
 ## 目录
 
 ```text
 src/gui_agent/
 ├─ types.py                  # 坐标、区域、截图和 OCR 数据类型
+├─ agent/
+│  ├─ types.py              # 任务计划、动作、决策、观察与结果 schema
+│  ├─ prompts.py            # 脱敏后的计划/动作 prompt
+│  ├─ planner.py            # fake 与 OpenAI-compatible Planner
+│  └─ qwen.py               # 本地 Qwen Transformers Planner
+├─ datasets/                # 三个公开数据源的适配器、schema 与 writer
 ├─ perception/
 │  ├─ capture.py            # MSS 截图
 │  ├─ ocr.py                # OCR 协议与 EasyOCR 后端
@@ -89,8 +109,9 @@ src/gui_agent/
 └─ control/
    └─ controller.py         # dry-run 控制器与 PyAutoGUI 适配器
 
-examples/                   # 四个安全 CLI 演示
-tests/                      # 不接触真实桌面/模型的单元测试
+examples/                   # 感知/控制演示与合成模型 smoke test
+scripts/                    # 数据集预处理 CLI
+tests/                      # 默认隔离的单元测试；integration 需显式启用
 docs/                       # 计划、设计、安装说明和测试报告
 ```
 
@@ -101,6 +122,8 @@ docs/                       # 计划、设计、安装说明和测试报告
 - EasyOCR 可能改变英文大小写，例如合成图中的 `Save` 曾识别为 `SaVe`；查找时可使用 `--ignore-case`。
 - Windows 显示缩放、远程桌面、应用自绘控件和跨 DPI 显示器可能造成视觉坐标与输入坐标偏差，真实控制前必须 dry-run 验证。
 - PyAutoGUI 的 `write` 对非 ASCII/输入法文本支持有限；当前中文能力主要用于 OCR，不保证中文键盘输入。
-- 当前控制决策只按文本候选工作；多模态模型、规划器和复杂 Agent 循环属于后续周次。
+- 本地 Qwen 首次运行需要联网下载约 8.9 GB 权重；模型缓存不提交 Git，16 GB 显存的本机合成测试峰值分配约 9.0 GiB。
+- OpenAI-compatible 路径只有显式允许后才发送图片；截图像素可能含敏感信息，prompt 文本脱敏不能替代发送前人工检查。
+- 当前只有结构化多模态规划边界；自动观察—动作循环、失败重试、轨迹日志和安全执行策略属于第 4 周。
 
 截图、标注、PDF、模型权重、缓存、日志及 `.env` 均由 `.gitignore` 排除。不要把包含个人信息的桌面图像提交到仓库。
