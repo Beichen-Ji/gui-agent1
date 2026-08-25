@@ -9,7 +9,7 @@ from gui_agent.datasets.schema import DatasetManifest, NormalizedGUIRecord
 _SOURCE_METADATA = {
     "screenagent": (
         "https://github.com/niuzaisheng/ScreenAgent",
-        "MIT code license; verify dataset terms before redistribution",
+        "Apache-2.0 (dataset); MIT (code)",
     ),
     "mind2web": (
         "https://huggingface.co/datasets/osunlp/Mind2Web",

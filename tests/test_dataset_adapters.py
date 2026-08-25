@@ -113,6 +113,20 @@ def test_writer_rejects_mixed_dataset_sources(tmp_path: Path) -> None:
         write_dataset([webarena, screenagent], tmp_path / "mixed")
 
 
+def test_screenagent_manifest_records_dataset_and_code_licenses(tmp_path: Path) -> None:
+    record = next(
+        iter_screenagent(
+            FIXTURES / "screenagent",
+            split="train",
+            report=AdapterReport(),
+        )
+    )
+
+    manifest = write_dataset([record], tmp_path / "screenagent")
+
+    assert manifest.license == "Apache-2.0 (dataset); MIT (code)"
+
+
 def test_dataset_cli_help_lists_all_sources(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as captured:
         prepare_gui_datasets.main(["--help"])
