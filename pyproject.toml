@@ -17,6 +17,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+agent = [
+    "langchain>=1,<2",
+    "langchain-openai>=1,<2",
+    "pydantic>=2,<3",
+]
+datasets = [
+    "datasets>=4,<5",
+]
+local-model = [
+    "accelerate>=1,<2",
+    "safetensors>=0.6,<1",
+    "transformers>=5,<6",
+]
 ocr = [
     "easyocr>=1.7.2,<2",
     "torch>=2.7,<3",
@@ -66,5 +79,5 @@ strict = true
 exclude = ["^\\.venv/"]
 
 [[tool.mypy.overrides]]
-module = ["cv2", "easyocr", "mss", "mss.*", "pyautogui", "pynput", "pynput.*", "torch"]
+module = ["cv2", "datasets", "easyocr", "mss", "mss.*", "pyautogui", "pynput", "pynput.*", "torch", "transformers"]
 ignore_missing_imports = true
