@@ -682,19 +682,19 @@ class GUIAgent:
     def run(self, goal: str, *, max_steps: int = 10) -> AgentRunResult: ...
 ```
 
-- [ ] **Step 1: 写确定性闭环测试**
+- [x] **Step 1: 写确定性闭环测试**
 
 用 `FakePlanner`、fake observations 和 dry-run executor 验证：先观察再规划、每个动作后重新观察、结果进入下一轮、`finish` 正常停止、最大步数停止、planner/观察/执行错误返回明确失败状态。
 
-- [ ] **Step 2: 实现最小循环**
+- [x] **Step 2: 实现最小循环**
 
 流程严格为：`observe -> create_plan（仅首次） -> next_action -> authorize -> execute -> StepResult -> observe`。第 4 周不自动重试；任何异常都停止并保留已经完成的步骤记录。
 
-- [ ] **Step 3: 增加无进展保护**
+- [x] **Step 3: 增加无进展保护**
 
 连续两次完全相同动作或超过 `max_steps` 时停止并返回 `stopped`，不继续点击。更复杂的视觉差异和自动重试留到第 6 周。
 
-- [ ] **Step 4: 验证并提交**
+- [x] **Step 4: 验证并提交**
 
 ```powershell
 uv run pytest tests/test_agent_loop.py -v
