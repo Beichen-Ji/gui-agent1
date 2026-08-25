@@ -1,0 +1,13 @@
+{
+  "task_prompt_en": "Open the browser and search for weather",
+  "saved_image_name": "002.jpg",
+  "session_id": "session-b",
+  "actions": [
+    {
+      "action_type": "MouseAction",
+      "mouse_action_type": "double_click",
+      "mouse_button": "left",
+      "mouse_position": {"width": 410, "height": 220}
+    }
+  ]
+}

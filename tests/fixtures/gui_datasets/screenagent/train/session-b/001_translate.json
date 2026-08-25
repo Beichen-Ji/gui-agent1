@@ -1,0 +1,16 @@
+{
+  "task_prompt_en": "Open the browser and search for weather",
+  "saved_image_name": "001.jpg",
+  "session_id": "session-b",
+  "actions": [
+    {
+      "action_type": "PlanAction",
+      "tasks": ["Open the browser", "Search for weather"]
+    },
+    {
+      "action_type": "KeyboardAction",
+      "keyboard_action_type": "text",
+      "keyboard_text": "weather"
+    }
+  ]
+}

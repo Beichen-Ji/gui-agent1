@@ -1,0 +1,9 @@
+{
+  "task_id": 2,
+  "sites": ["shopping"],
+  "intent": "Find a blue shirt",
+  "eval": {
+    "eval_types": ["string_match"],
+    "reference_answers": {"must_include": ["blue shirt"]}
+  }
+}

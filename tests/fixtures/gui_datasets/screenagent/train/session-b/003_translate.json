@@ -1,0 +1,12 @@
+{
+  "task_prompt_en": "Open the browser and search for weather",
+  "saved_image_name": "003.jpg",
+  "session_id": "session-b",
+  "actions": [
+    {
+      "action_type": "KeyboardAction",
+      "keyboard_action_type": "press",
+      "keyboard_key": ["Control_L", "a"]
+    }
+  ]
+}

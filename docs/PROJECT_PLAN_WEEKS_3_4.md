@@ -408,7 +408,7 @@ git commit -m "feat: define GUI agent and dataset schemas"
 
 **Produces:** 每个源的标准化 JSONL 和 manifest；无效样本计数，不静默吞掉错误。
 
-- [ ] **Step 1: 为三个最小脱敏 fixture 写失败测试**
+- [x] **Step 1: 为三个最小脱敏 fixture 写失败测试**
 
 每个 fixture 只含 1-2 条手写结构数据，不复制数据集图片。测试字段映射、动作坐标、任务成功条件、`--limit`、确定性排序和无效记录报告。
 
@@ -416,7 +416,7 @@ git commit -m "feat: define GUI agent and dataset schemas"
 uv run pytest tests/test_dataset_adapters.py -v
 ```
 
-- [ ] **Step 2: 实现纯适配函数**
+- [x] **Step 2: 实现纯适配函数**
 
 ```python
 def iter_screenagent(root: Path, *, split: str) -> Iterator[NormalizedGUIRecord]: ...
@@ -427,7 +427,7 @@ def write_dataset(records: Iterable[NormalizedGUIRecord], output: Path) -> Datas
 
 适配函数不负责网络下载；Mind2Web CLI 层可使用 `load_dataset(..., streaming=True)`。
 
-- [ ] **Step 3: 实现预处理 CLI**
+- [x] **Step 3: 实现预处理 CLI**
 
 ```powershell
 uv run python scripts/prepare_gui_datasets.py --help
@@ -435,7 +435,7 @@ uv run python scripts/prepare_gui_datasets.py --help
 
 CLI 必须提供 `screenagent`、`mind2web`、`webarena` 子命令以及 `--limit`、`--revision`、`--output`。
 
-- [ ] **Step 4: 用真实来源做限量 smoke test**
+- [x] **Step 4: 用真实来源做限量 smoke test**
 
 ```powershell
 git clone --depth 1 https://github.com/niuzaisheng/ScreenAgent external/ScreenAgent
@@ -456,7 +456,7 @@ uv run python scripts/prepare_gui_datasets.py webarena `
 
 预期：三个输出目录都有 JSONL 和 manifest；`git status` 不出现数据文件。若上游目录结构变更，适配器必须给出包含源路径的明确错误，而不是猜测路径。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```powershell
 git add src/gui_agent/datasets scripts/prepare_gui_datasets.py tests/fixtures/gui_datasets tests/test_dataset_adapters.py
