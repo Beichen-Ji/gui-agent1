@@ -649,19 +649,19 @@ git commit -m "feat: build agent observations from desktop perception"
 
 **Produces:** `SafetyPolicy.authorize()` 与 `ActionExecutor.execute()`。
 
-- [ ] **Step 1: 写安全失败测试**
+- [x] **Step 1: 写安全失败测试**
 
 覆盖屏幕外坐标、未支持按键、超长文本、零/负等待、未确认 live 动作、模型请求 shell/文件删除等不存在的动作类型，以及 dry-run 绝不实例化真实 PyAutoGUI。
 
-- [ ] **Step 2: 实现 fail-closed 策略**
+- [x] **Step 2: 实现 fail-closed 策略**
 
 策略只接受 schema 中的动作；真实模式默认逐动作显示“动作、坐标/文本摘要、预期结果”，用户输入完整确认短语后才执行。输入文本在确认显示中截断并转义，日志不记录潜在密码。
 
-- [ ] **Step 3: 映射现有控制器**
+- [x] **Step 3: 映射现有控制器**
 
 `click`、`type_text`、`hotkey`、`scroll`、`drag` 映射到 `DesktopController`；`wait` 使用可注入 clock；`finish` 不调用控制器。
 
-- [ ] **Step 4: 验证并提交**
+- [x] **Step 4: 验证并提交**
 
 ```powershell
 uv run pytest tests/test_agent_policy.py tests/test_agent_executor.py -v
