@@ -580,7 +580,7 @@ git diff --check
 - 普通测试不访问网络/桌面/模型。
 - 数据、模型、图片和密钥没有进入 Git diff。
 
-- [ ] **Step 4: 提交、推送、PR**
+- [x] **Step 4: 提交、推送、PR**
 
 ```powershell
 git add README.md docs/setup/model-provider-setup.md docs/test-reports/week3-agent-foundation-report.md
@@ -590,6 +590,8 @@ gh pr create --draft --base master --head codex/week3-data-agent-foundation
 ```
 
 CI 通过并人工审阅后合并，再创建 `v0.3.0-week3` 标签。
+
+草稿 PR：[#3 Week 3: add data and multimodal planner foundations](https://github.com/Beichen-Ji/gui-agent1/pull/3)。第 4 周继续等待该 PR 的人工审阅与合并。
 
 ---
 
