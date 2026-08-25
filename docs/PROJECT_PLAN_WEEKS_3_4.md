@@ -621,15 +621,15 @@ uv run pytest -q
 
 **Produces:** `ObservationBuilder.observe(step_index: int) -> Observation`。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 使用 fake capture 和 fake OCR 验证：截图只捕获一次、OCR 使用截图原点、检测结果转为 tuple、错误不被吞掉、不会保存截图。
 
-- [ ] **Step 2: 实现最小组合层**
+- [x] **Step 2: 实现最小组合层**
 
 该层不包含模型、不执行动作，也不依赖 LangChain。
 
-- [ ] **Step 3: 验证并提交**
+- [x] **Step 3: 验证并提交**
 
 ```powershell
 uv run pytest tests/test_agent_observation.py -v
