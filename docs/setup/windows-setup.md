@@ -173,6 +173,24 @@ uv run python examples/perception_control_demo.py "保存" `
 
 PyAutoGUI `write` 主要适合基础键盘字符。项目已支持中文 OCR，但未实现剪贴板/输入法驱动的可靠中文输入。
 
+### Tkinter 报 `Can't find a usable init.tcl`
+
+先检查当前解释器的 Tcl/Tk：
+
+```powershell
+uv run python -m tkinter
+```
+
+如果仍然报 `init.tcl` 错误，说明当前 Python 的 Tcl/Tk 安装不可用。`examples/gui_testbed.py`
+只依赖标准库，可以临时改用任意 Tkinter 正常的本机 Python：
+
+```powershell
+& "C:\path\to\python.exe" examples\gui_testbed.py
+```
+
+长期使用时，建议安装带 Tcl/Tk 的 Python 3.11，并用它重新创建项目 `.venv`；其余项目命令仍应
+遵守 `pyproject.toml` 的 Python 3.11 约束。
+
 ## 9. 开发门禁
 
 ```powershell

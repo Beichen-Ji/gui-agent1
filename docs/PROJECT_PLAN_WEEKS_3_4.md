@@ -710,13 +710,18 @@ git commit -m "feat: add bounded GUI agent execution loop"
 - Create: `examples/agent_demo.py`
 - Create: `examples/gui_testbed.py`
 - Create: `configs/week4_tasks.json`
+- Create: `src/gui_agent/agent/smoke.py`
+- Create: `src/gui_agent/datasets/cli.py`
+- Modify: `examples/model_smoke.py`
+- Modify: `scripts/prepare_gui_datasets.py`
 - Create: `tests/test_agent_cli.py`
+- Modify: `tests/test_dataset_adapters.py`
 
-- [ ] **Step 1: 写 CLI 失败测试**
+- [x] **Step 1: 写 CLI 失败测试**
 
 覆盖 `--help`、缺少 task、非法 provider、`max_steps`、dry-run 默认、远程图片授权和 `--execute` 确认失败。
 
-- [ ] **Step 2: 实现命令**
+- [x] **Step 2: 实现命令**
 
 ```powershell
 uv run gui-agent dataset --help
@@ -726,23 +731,27 @@ uv run gui-agent run --help
 
 `run` 参数至少包括 `--task` / `--task-id`、`--provider fake|qwen|openai-compatible`、`--model`、`--monitor`、`--max-steps`、`--execute`、`--allow-remote-image` 和 `--trace-dir`。
 
-- [ ] **Step 3: 实现本地 Testbed**
+- [x] **Step 3: 实现本地 Testbed**
 
 用 Python 标准库 Tkinter 创建无外部账号的窗口，包含 Browser、Files、Messages 三个区域和可查询的成功状态。消息只写入该进程内存；测试文件只来自 `artifacts/testbed/`；关闭操作只关闭 Testbed 自身。
 
-- [ ] **Step 4: dry-run 演示**
+- [x] **Step 4: dry-run 演示**
 
 ```powershell
 uv run python examples/gui_testbed.py
-uv run gui-agent run --task-id search-local-content --provider fake --max-steps 6
+uv run gui-agent run --task-id search-content --provider fake --max-steps 6
 ```
 
 预期：第二条命令只打印计划动作，不移动鼠标。
 
-- [ ] **Step 5: 提交**
+如果 `uv` 管理的 Python 报 `Can't find a usable init.tcl`，先运行
+`uv run python -m tkinter` 检查 Tcl/Tk。Testbed 只依赖 Python 标准库，因此可以改用任意
+Tkinter 正常的本机 Python：`& "C:\path\to\python.exe" examples\gui_testbed.py`。
+
+- [x] **Step 5: 提交**
 
 ```powershell
-git add src/gui_agent/cli.py src/gui_agent/__init__.py examples/agent_demo.py examples/gui_testbed.py configs/week4_tasks.json tests/test_agent_cli.py
+git add configs examples scripts src tests docs
 git commit -m "feat: add GUI agent CLI and safe testbed"
 ```
 
