@@ -1,0 +1,9 @@
+{
+  "task_id": 10,
+  "sites": ["reddit"],
+  "intent": "List all forums",
+  "eval": {
+    "eval_types": ["url_match"],
+    "reference_url": "http://example.test/forums/all"
+  }
+}

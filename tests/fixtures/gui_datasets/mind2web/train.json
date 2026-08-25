@@ -1,0 +1,33 @@
+[
+  {
+    "annotation_id": "mind-session-1",
+    "confirmed_task": "Choose a pickup restaurant",
+    "action_reprs": ["Click the pickup selector", "Type Boston", "Select pickup"],
+    "actions": [
+      {
+        "action_uid": "action-1",
+        "cleaned_html": "<select aria-label=\"Reservation type\"></select>",
+        "operation": {"op": "CLICK", "original_op": "CLICK", "value": ""},
+        "pos_candidates": [
+          {
+            "tag": "select",
+            "attributes": "{\"bounding_box_rect\": \"10,20,40,20\"}",
+            "backend_node_id": "136"
+          }
+        ]
+      },
+      {
+        "action_uid": "action-2",
+        "cleaned_html": "<input aria-label=\"Location\" />",
+        "operation": {"op": "TYPE", "original_op": "TYPE", "value": "Boston"},
+        "pos_candidates": []
+      },
+      {
+        "action_uid": "action-3",
+        "cleaned_html": "<select aria-label=\"Reservation type\"></select>",
+        "operation": {"op": "SELECT", "original_op": "SELECT", "value": "pickup"},
+        "pos_candidates": []
+      }
+    ]
+  }
+]

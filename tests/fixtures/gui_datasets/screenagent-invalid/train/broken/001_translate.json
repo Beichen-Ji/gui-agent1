@@ -1,0 +1,12 @@
+{
+  "task_prompt_en": "Broken fixture",
+  "saved_image_name": "001.jpg",
+  "session_id": "broken",
+  "actions": [
+    {
+      "action_type": "MouseAction",
+      "mouse_action_type": "click",
+      "mouse_button": "left"
+    }
+  ]
+}

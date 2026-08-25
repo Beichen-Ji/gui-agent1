@@ -10,6 +10,7 @@ coverage.xml
 htmlcov/
 .python/
 .tools/
+.worktrees/
 .uv-cache/
 
 # Environment and secrets
@@ -24,8 +25,10 @@ artifacts/*
 
 # Large local resources
 data/
+external/
 models/
 checkpoints/
+.cache/huggingface/
 .EasyOCR/
 *.pth
 *.pt
