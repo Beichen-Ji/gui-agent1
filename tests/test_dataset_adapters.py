@@ -6,6 +6,7 @@ from typing import cast
 import pytest
 
 from gui_agent.agent.types import ClickAction, HotkeyAction, TypeTextAction
+from gui_agent.datasets import cli as dataset_cli
 from gui_agent.datasets.mind2web import iter_mind2web
 from gui_agent.datasets.pipeline import AdapterReport, write_dataset
 from gui_agent.datasets.schema import NormalizedGUIRecord
@@ -172,7 +173,7 @@ def test_dataset_cli_does_not_exhaust_stream_beyond_limit_probe(
         yield records[1]
         raise AssertionError("CLI consumed beyond limit + 1")
 
-    monkeypatch.setattr(prepare_gui_datasets, "iter_webarena", guarded_records)
+    monkeypatch.setattr(dataset_cli, "iter_webarena", guarded_records)
 
     result = prepare_gui_datasets.main(
         [

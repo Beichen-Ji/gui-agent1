@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "tasks": [
+    {
+      "id": "open-browser",
+      "instruction": "Open the Browser area in the local Week 4 testbed.",
+      "success_criteria": "The Browser area is visible and marked open.",
+      "actions": [
+        {"kind": "click", "x": 110, "y": 95},
+        {"kind": "finish", "success": true, "summary": "Browser area opened"}
+      ]
+    },
+    {
+      "id": "search-content",
+      "instruction": "Search for 'week4 safe search' in the local testbed Browser area.",
+      "success_criteria": "The result area displays 'Search result: week4 safe search'.",
+      "actions": [
+        {"kind": "click", "x": 240, "y": 95},
+        {"kind": "type_text", "text": "week4 safe search"},
+        {"kind": "finish", "success": true, "summary": "Local content search completed"}
+      ]
+    },
+    {
+      "id": "open-file",
+      "instruction": "Open week4-demo.txt from the local testbed Files area.",
+      "success_criteria": "The Files area displays week4-demo.txt and WEEK4_DEMO_READY.",
+      "actions": [
+        {"kind": "click", "x": 370, "y": 95},
+        {"kind": "finish", "success": true, "summary": "Local demo file opened"}
+      ]
+    },
+    {
+      "id": "send-message",
+      "instruction": "Send 'week4 test message' to the in-memory local testbed inbox.",
+      "success_criteria": "The local inbox displays exactly 'week4 test message'.",
+      "actions": [
+        {"kind": "click", "x": 500, "y": 95},
+        {"kind": "type_text", "text": "week4 test message"},
+        {"kind": "click", "x": 500, "y": 160},
+        {"kind": "finish", "success": true, "summary": "Message sent to local testbed inbox"}
+      ]
+    },
+    {
+      "id": "close-app",
+      "instruction": "Close only the local Week 4 testbed application.",
+      "success_criteria": "The testbed window exits and unrelated applications remain open.",
+      "actions": [
+        {"kind": "hotkey", "keys": ["alt", "f4"]},
+        {"kind": "finish", "success": true, "summary": "Local testbed closed"}
+      ]
+    }
+  ]
+}

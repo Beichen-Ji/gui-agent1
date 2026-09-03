@@ -621,15 +621,15 @@ uv run pytest -q
 
 **Produces:** `ObservationBuilder.observe(step_index: int) -> Observation`。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 使用 fake capture 和 fake OCR 验证：截图只捕获一次、OCR 使用截图原点、检测结果转为 tuple、错误不被吞掉、不会保存截图。
 
-- [ ] **Step 2: 实现最小组合层**
+- [x] **Step 2: 实现最小组合层**
 
 该层不包含模型、不执行动作，也不依赖 LangChain。
 
-- [ ] **Step 3: 验证并提交**
+- [x] **Step 3: 验证并提交**
 
 ```powershell
 uv run pytest tests/test_agent_observation.py -v
@@ -649,19 +649,19 @@ git commit -m "feat: build agent observations from desktop perception"
 
 **Produces:** `SafetyPolicy.authorize()` 与 `ActionExecutor.execute()`。
 
-- [ ] **Step 1: 写安全失败测试**
+- [x] **Step 1: 写安全失败测试**
 
 覆盖屏幕外坐标、未支持按键、超长文本、零/负等待、未确认 live 动作、模型请求 shell/文件删除等不存在的动作类型，以及 dry-run 绝不实例化真实 PyAutoGUI。
 
-- [ ] **Step 2: 实现 fail-closed 策略**
+- [x] **Step 2: 实现 fail-closed 策略**
 
 策略只接受 schema 中的动作；真实模式默认逐动作显示“动作、坐标/文本摘要、预期结果”，用户输入完整确认短语后才执行。输入文本在确认显示中截断并转义，日志不记录潜在密码。
 
-- [ ] **Step 3: 映射现有控制器**
+- [x] **Step 3: 映射现有控制器**
 
 `click`、`type_text`、`hotkey`、`scroll`、`drag` 映射到 `DesktopController`；`wait` 使用可注入 clock；`finish` 不调用控制器。
 
-- [ ] **Step 4: 验证并提交**
+- [x] **Step 4: 验证并提交**
 
 ```powershell
 uv run pytest tests/test_agent_policy.py tests/test_agent_executor.py -v
@@ -682,19 +682,19 @@ class GUIAgent:
     def run(self, goal: str, *, max_steps: int = 10) -> AgentRunResult: ...
 ```
 
-- [ ] **Step 1: 写确定性闭环测试**
+- [x] **Step 1: 写确定性闭环测试**
 
 用 `FakePlanner`、fake observations 和 dry-run executor 验证：先观察再规划、每个动作后重新观察、结果进入下一轮、`finish` 正常停止、最大步数停止、planner/观察/执行错误返回明确失败状态。
 
-- [ ] **Step 2: 实现最小循环**
+- [x] **Step 2: 实现最小循环**
 
 流程严格为：`observe -> create_plan（仅首次） -> next_action -> authorize -> execute -> StepResult -> observe`。第 4 周不自动重试；任何异常都停止并保留已经完成的步骤记录。
 
-- [ ] **Step 3: 增加无进展保护**
+- [x] **Step 3: 增加无进展保护**
 
 连续两次完全相同动作或超过 `max_steps` 时停止并返回 `stopped`，不继续点击。更复杂的视觉差异和自动重试留到第 6 周。
 
-- [ ] **Step 4: 验证并提交**
+- [x] **Step 4: 验证并提交**
 
 ```powershell
 uv run pytest tests/test_agent_loop.py -v
@@ -710,13 +710,18 @@ git commit -m "feat: add bounded GUI agent execution loop"
 - Create: `examples/agent_demo.py`
 - Create: `examples/gui_testbed.py`
 - Create: `configs/week4_tasks.json`
+- Create: `src/gui_agent/agent/smoke.py`
+- Create: `src/gui_agent/datasets/cli.py`
+- Modify: `examples/model_smoke.py`
+- Modify: `scripts/prepare_gui_datasets.py`
 - Create: `tests/test_agent_cli.py`
+- Modify: `tests/test_dataset_adapters.py`
 
-- [ ] **Step 1: 写 CLI 失败测试**
+- [x] **Step 1: 写 CLI 失败测试**
 
 覆盖 `--help`、缺少 task、非法 provider、`max_steps`、dry-run 默认、远程图片授权和 `--execute` 确认失败。
 
-- [ ] **Step 2: 实现命令**
+- [x] **Step 2: 实现命令**
 
 ```powershell
 uv run gui-agent dataset --help
@@ -726,23 +731,27 @@ uv run gui-agent run --help
 
 `run` 参数至少包括 `--task` / `--task-id`、`--provider fake|qwen|openai-compatible`、`--model`、`--monitor`、`--max-steps`、`--execute`、`--allow-remote-image` 和 `--trace-dir`。
 
-- [ ] **Step 3: 实现本地 Testbed**
+- [x] **Step 3: 实现本地 Testbed**
 
 用 Python 标准库 Tkinter 创建无外部账号的窗口，包含 Browser、Files、Messages 三个区域和可查询的成功状态。消息只写入该进程内存；测试文件只来自 `artifacts/testbed/`；关闭操作只关闭 Testbed 自身。
 
-- [ ] **Step 4: dry-run 演示**
+- [x] **Step 4: dry-run 演示**
 
 ```powershell
 uv run python examples/gui_testbed.py
-uv run gui-agent run --task-id search-local-content --provider fake --max-steps 6
+uv run gui-agent run --task-id search-content --provider fake --max-steps 6
 ```
 
 预期：第二条命令只打印计划动作，不移动鼠标。
 
-- [ ] **Step 5: 提交**
+如果 `uv` 管理的 Python 报 `Can't find a usable init.tcl`，先运行
+`uv run python -m tkinter` 检查 Tcl/Tk。Testbed 只依赖 Python 标准库，因此可以改用任意
+Tkinter 正常的本机 Python：`& "C:\path\to\python.exe" examples\gui_testbed.py`。
+
+- [x] **Step 5: 提交**
 
 ```powershell
-git add src/gui_agent/cli.py src/gui_agent/__init__.py examples/agent_demo.py examples/gui_testbed.py configs/week4_tasks.json tests/test_agent_cli.py
+git add configs examples scripts src tests docs
 git commit -m "feat: add GUI agent CLI and safe testbed"
 ```
 

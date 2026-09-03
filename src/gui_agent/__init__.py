@@ -2,5 +2,6 @@ __version__ = "0.2.0"
 
 
 def main() -> None:
-    print(f"gui-agent {__version__}")
-    print("See README.md for setup, safety guidance, and examples.")
+    from gui_agent.cli import main as cli_main
+
+    raise SystemExit(cli_main())

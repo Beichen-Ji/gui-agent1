@@ -23,8 +23,10 @@ from gui_agent.agent.types import (
     AgentDecision,
     AgentState,
     ClickAction,
+    DragAction,
     FinishAction,
     Observation,
+    ScrollAction,
     StepResult,
     TaskPlan,
     TaskStep,
@@ -319,6 +321,192 @@ def test_qwen_planner_uses_in_memory_resized_image_and_parses_json() -> None:
     assert processor.inputs[0].device == "cuda:0"
     assert model.generate_calls[0]["max_new_tokens"] == 256
     assert model.generate_calls[0]["do_sample"] is False
+
+
+@pytest.mark.parametrize(
+    ("relative_action", "absolute_action"),
+    [
+        (
+            ClickAction(x=58, y=180),
+            ClickAction(x=-54, y=128),
+        ),
+        (
+            ScrollAction(clicks=-3, x=500, y=500),
+            ScrollAction(clicks=-3, x=300, y=320),
+        ),
+        (
+            ScrollAction(clicks=2),
+            ScrollAction(clicks=2),
+        ),
+        (
+            DragAction(
+                start_x=100,
+                start_y=200,
+                end_x=900,
+                end_y=800,
+                duration=0.75,
+            ),
+            DragAction(
+                start_x=-20,
+                start_y=140,
+                end_x=620,
+                end_y=500,
+                duration=0.75,
+            ),
+        ),
+    ],
+)
+def test_qwen_planner_converts_relative_pointer_coordinates_to_desktop_pixels(
+    relative_action: ClickAction | ScrollAction | DragAction,
+    absolute_action: ClickAction | ScrollAction | DragAction,
+) -> None:
+    decision = AgentDecision(
+        current_step_id="step-1",
+        rationale_summary="The target is visible",
+        action=relative_action,
+        expected_outcome="The visible target changes",
+    )
+    processor = ProcessorProbe([decision.model_dump_json()])
+    planner = QwenTransformersPlanner(processor=processor, model=ModelProbe())
+    state = AgentState(
+        goal="Open the browser",
+        plan=task_plan(),
+        observation=observation(),
+        decisions=(),
+        results=(),
+    )
+
+    result = planner.next_action(state)
+
+    assert result.action == absolute_action
+    messages = cast(list[dict[str, Any]], processor.messages[0])
+    content = cast(list[dict[str, Any]], messages[0]["content"])
+    prompt = cast(str, content[1]["text"])
+    assert "image-relative" in prompt
+    assert "1000x1000" in prompt
+
+
+@pytest.mark.parametrize(
+    ("relative_action", "absolute_action"),
+    [
+        (
+            ClickAction(x=0, y=999),
+            ClickAction(x=-100, y=619),
+        ),
+        (
+            ScrollAction(clicks=-3, x=999, y=0),
+            ScrollAction(clicks=-3, x=699, y=20),
+        ),
+        (
+            DragAction(
+                start_x=0,
+                start_y=999,
+                end_x=999,
+                end_y=0,
+            ),
+            DragAction(
+                start_x=-100,
+                start_y=619,
+                end_x=699,
+                end_y=20,
+            ),
+        ),
+    ],
+)
+def test_qwen_planner_maps_grid_endpoints_using_original_image_after_resize(
+    relative_action: ClickAction | ScrollAction | DragAction,
+    absolute_action: ClickAction | ScrollAction | DragAction,
+) -> None:
+    decision = AgentDecision(
+        current_step_id="step-1",
+        rationale_summary="The target is at an image boundary",
+        action=relative_action,
+        expected_outcome="The boundary target changes",
+    )
+    processor = ProcessorProbe([decision.model_dump_json()])
+    planner = QwenTransformersPlanner(
+        processor=processor,
+        model=ModelProbe(),
+        max_image_side=400,
+    )
+    state = AgentState(
+        goal="Open the browser",
+        plan=task_plan(),
+        observation=observation(),
+        decisions=(),
+        results=(),
+    )
+
+    result = planner.next_action(state)
+
+    assert result.action == absolute_action
+    messages = cast(list[dict[str, Any]], processor.messages[0])
+    content = cast(list[dict[str, Any]], messages[0]["content"])
+    image = cast(Image.Image, content[0]["image"])
+    assert image.size == (400, 300)
+
+
+@pytest.mark.parametrize("coordinate", [-1, 1000])
+def test_qwen_planner_rejects_pointer_coordinates_outside_relative_grid(
+    coordinate: int,
+) -> None:
+    decision = AgentDecision(
+        current_step_id="step-1",
+        rationale_summary="The target is visible",
+        action=ClickAction(x=coordinate, y=500),
+        expected_outcome="The visible target changes",
+    )
+    planner = QwenTransformersPlanner(
+        processor=ProcessorProbe([decision.model_dump_json()]),
+        model=ModelProbe(),
+    )
+    state = AgentState(
+        goal="Open the browser",
+        plan=task_plan(),
+        observation=observation(),
+        decisions=(),
+        results=(),
+    )
+
+    with pytest.raises(PlannerError, match="AgentDecision") as captured:
+        planner.next_action(state)
+
+    assert isinstance(captured.value.__cause__, ValueError)
+    assert "between 0 and 999" in str(captured.value.__cause__)
+
+
+@pytest.mark.parametrize(
+    "action",
+    [ScrollAction(clicks=-3, x=500), ScrollAction(clicks=-3, y=500)],
+)
+def test_qwen_planner_rejects_partial_scroll_coordinates(
+    action: ScrollAction,
+) -> None:
+    decision = AgentDecision(
+        current_step_id="step-1",
+        rationale_summary="The scroll area is visible",
+        action=action,
+        expected_outcome="The visible content moves",
+    )
+    planner = QwenTransformersPlanner(
+        processor=ProcessorProbe([decision.model_dump_json()]),
+        model=ModelProbe(),
+    )
+    state = AgentState(
+        goal="Open the browser",
+        plan=task_plan(),
+        observation=observation(),
+        decisions=(),
+        results=(),
+    )
+
+    with pytest.raises(PlannerError, match="AgentDecision") as captured:
+        planner.next_action(state)
+
+    assert isinstance(captured.value.__cause__, ValueError)
+    assert "scroll x and y must be provided together" in str(
+        captured.value.__cause__
+    )
 
 
 def test_qwen_planner_loads_model_lazily_without_requiring_torch_for_fakes(
