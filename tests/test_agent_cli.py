@@ -13,6 +13,7 @@ from gui_agent.agent.types import (
     StepResult,
     TypeTextAction,
 )
+from gui_agent.types import ScreenRegion
 
 
 class RuntimeProbe:
@@ -61,6 +62,7 @@ def test_cli_help_lists_commands_and_run_safety_options(
             "--task-id",
             "--provider",
             "--monitor",
+            "--region",
             "--max-steps",
             "--execute",
             "--allow-remote-image",
@@ -139,6 +141,39 @@ def test_cli_defaults_to_dry_run_and_passes_validated_runtime_options() -> None:
     assert configs[0].execute is False
     assert configs[0].provider == "fake"
     assert runner.calls == [("Open Browser", 4)]
+
+
+def test_cli_passes_absolute_capture_region_without_a_monitor() -> None:
+    configs: list[cli.RunConfig] = []
+    runner = RuntimeProbe(run_result())
+
+    def runtime_factory(
+        config: cli.RunConfig,
+        _input_fn: Callable[[str], str],
+    ) -> RuntimeProbe:
+        configs.append(config)
+        return runner
+
+    exit_code = cli.main(
+        [
+            "run",
+            "--task",
+            "Open Browser",
+            "--provider",
+            "qwen",
+            "--region",
+            "-60",
+            "20",
+            "760",
+            "520",
+        ],
+        runtime_factory=runtime_factory,
+    )
+
+    assert exit_code == 0
+    assert len(configs) == 1
+    assert configs[0].monitor is None
+    assert configs[0].region == ScreenRegion(-60, 20, 760, 520)
 
 
 def test_cli_requires_explicit_remote_image_permission() -> None:

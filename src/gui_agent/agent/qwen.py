@@ -7,10 +7,27 @@ from pydantic import BaseModel
 
 from gui_agent.agent.planner import PlannerError
 from gui_agent.agent.prompts import build_action_prompt, build_plan_prompt
-from gui_agent.agent.types import AgentDecision, AgentState, Observation, TaskPlan
+from gui_agent.agent.types import (
+    AgentAction,
+    AgentDecision,
+    AgentState,
+    ClickAction,
+    DragAction,
+    Observation,
+    ScrollAction,
+    TaskPlan,
+)
 
 DEFAULT_QWEN_MODEL = "Qwen/Qwen3-VL-4B-Instruct"
+QWEN_COORDINATE_GRID_SIZE = 1000
 ModelSchema = TypeVar("ModelSchema", bound=BaseModel)
+
+_QWEN_COORDINATE_INSTRUCTION = (
+    "For click, scroll, and drag actions, return image-relative integer coordinates "
+    "on a 1000x1000 grid. (0,0) is the image's top-left pixel and (999,999) "
+    "is its bottom-right pixel. Do not add the desktop origin; the application "
+    "converts these coordinates to absolute desktop pixels."
+)
 
 
 def _default_processor_loader(model_name: str, **kwargs: object) -> object:
@@ -33,6 +50,92 @@ def _json_object(text: str) -> str:
     if start < 0 or end < start:
         raise ValueError("model output does not contain a JSON object")
     return stripped[start : end + 1]
+
+
+def _desktop_coordinate(value: int, *, origin: int, extent: int) -> int:
+    if not 0 <= value < QWEN_COORDINATE_GRID_SIZE:
+        raise ValueError("Qwen pointer coordinates must be between 0 and 999")
+    return origin + (value * extent) // QWEN_COORDINATE_GRID_SIZE
+
+
+def _desktop_action(action: AgentAction, observation: Observation) -> AgentAction:
+    screenshot = observation.screenshot
+    origin = screenshot.origin
+
+    if isinstance(action, ClickAction):
+        return action.model_copy(
+            update={
+                "x": _desktop_coordinate(
+                    action.x,
+                    origin=origin.x,
+                    extent=screenshot.width,
+                ),
+                "y": _desktop_coordinate(
+                    action.y,
+                    origin=origin.y,
+                    extent=screenshot.height,
+                ),
+            }
+        )
+
+    if isinstance(action, ScrollAction):
+        if action.x is None:
+            if action.y is None:
+                return action
+            raise ValueError("scroll x and y must be provided together")
+        if action.y is None:
+            raise ValueError("scroll x and y must be provided together")
+        return action.model_copy(
+            update={
+                "x": _desktop_coordinate(
+                    action.x,
+                    origin=origin.x,
+                    extent=screenshot.width,
+                ),
+                "y": _desktop_coordinate(
+                    action.y,
+                    origin=origin.y,
+                    extent=screenshot.height,
+                ),
+            }
+        )
+
+    if isinstance(action, DragAction):
+        return action.model_copy(
+            update={
+                "start_x": _desktop_coordinate(
+                    action.start_x,
+                    origin=origin.x,
+                    extent=screenshot.width,
+                ),
+                "start_y": _desktop_coordinate(
+                    action.start_y,
+                    origin=origin.y,
+                    extent=screenshot.height,
+                ),
+                "end_x": _desktop_coordinate(
+                    action.end_x,
+                    origin=origin.x,
+                    extent=screenshot.width,
+                ),
+                "end_y": _desktop_coordinate(
+                    action.end_y,
+                    origin=origin.y,
+                    extent=screenshot.height,
+                ),
+            }
+        )
+
+    return action
+
+
+def _desktop_decision(
+    decision: AgentDecision,
+    observation: Observation,
+) -> AgentDecision:
+    return decision.model_copy(
+        update={"action": _desktop_action(decision.action, observation)}
+    )
 
 
 class QwenTransformersPlanner:
@@ -106,6 +209,9 @@ class QwenTransformersPlanner:
             ensure_ascii=False,
             separators=(",", ":"),
         )
+        coordinate_instruction = (
+            f"\n{_QWEN_COORDINATE_INSTRUCTION}" if schema is AgentDecision else ""
+        )
         messages = [
             {
                 "role": "user",
@@ -114,7 +220,8 @@ class QwenTransformersPlanner:
                     {
                         "type": "text",
                         "text": (
-                            f"{prompt}\nReturn exactly one JSON object matching this schema:\n"
+                            f"{prompt}{coordinate_instruction}\n"
+                            "Return exactly one JSON object matching this schema:\n"
                             f"{schema_json}"
                         ),
                     },
@@ -141,7 +248,10 @@ class QwenTransformersPlanner:
                 skip_special_tokens=True,
                 clean_up_tokenization_spaces=False,
             )
-            return schema.model_validate_json(_json_object(decoded[0]))
+            parsed = schema.model_validate_json(_json_object(decoded[0]))
+            if isinstance(parsed, AgentDecision):
+                return cast(ModelSchema, _desktop_decision(parsed, observation))
+            return parsed
         except Exception as exc:
             raise PlannerError(f"local model failed to produce {schema.__name__}") from exc
 

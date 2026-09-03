@@ -50,7 +50,8 @@ class RunConfig:
     task_id: str | None
     provider: Provider
     model: str
-    monitor: int
+    monitor: int | None
+    region: ScreenRegion | None
     max_steps: int
     execute: bool
     allow_remote_image: bool
@@ -75,6 +76,13 @@ def _positive_integer(value: str) -> int:
     if converted < 1:
         raise argparse.ArgumentTypeError("must be a positive integer")
     return converted
+
+
+def _fixed_bounds(region: ScreenRegion) -> Callable[[], ScreenRegion]:
+    def bounds_provider() -> ScreenRegion:
+        return region
+
+    return bounds_provider
 
 
 def load_task_definitions(path: Path) -> dict[str, TaskDefinition]:
@@ -157,7 +165,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument("--api-base", default=os.environ.get("GUI_AGENT_API_BASE"))
     run.add_argument("--api-key", default=os.environ.get("GUI_AGENT_API_KEY"))
-    run.add_argument("--monitor", type=_positive_integer, default=1)
+    capture_group = run.add_mutually_exclusive_group()
+    capture_group.add_argument("--monitor", type=_positive_integer)
+    capture_group.add_argument(
+        "--region",
+        nargs=4,
+        type=int,
+        metavar=("LEFT", "TOP", "WIDTH", "HEIGHT"),
+        help="absolute virtual-desktop capture region",
+    )
     run.add_argument("--max-steps", type=_positive_integer, default=10)
     run.add_argument("--execute", action="store_true")
     run.add_argument("--allow-remote-image", action="store_true")
@@ -236,6 +252,7 @@ def build_runtime(config: RunConfig, input_fn: InputFunction) -> GUIAgent:
             capture,
             EasyOCRBackend(),
             monitor_index=config.monitor,
+            region=config.region,
             min_confidence=0.5,
         )
         if config.provider == "qwen":
@@ -247,9 +264,13 @@ def build_runtime(config: RunConfig, input_fn: InputFunction) -> GUIAgent:
                 api_key=config.api_key,
                 allow_remote_image=config.allow_remote_image,
             )
+        if config.region is None:
+            bounds_provider = capture.virtual_bounds
+        else:
+            bounds_provider = _fixed_bounds(config.region)
         controller = DesktopController(
             dry_run=not config.execute,
-            bounds_provider=capture.virtual_bounds,
+            bounds_provider=bounds_provider,
         )
     return GUIAgent(
         observer,
@@ -294,6 +315,17 @@ def main(
     if args.provider == "openai-compatible" and not args.allow_remote_image:
         parser.error("openai-compatible provider requires --allow-remote-image")
 
+    raw_region = cast(list[int] | None, args.region)
+    if raw_region is None:
+        region = None
+    else:
+        try:
+            region = ScreenRegion(*raw_region)
+        except ValueError as error:
+            parser.error(f"invalid --region: {error}")
+    raw_monitor = cast(int | None, args.monitor)
+    monitor = None if region is not None else (raw_monitor or 1)
+
     task_id = cast(str | None, args.task_id)
     configured_actions: tuple[AgentAction, ...] = ()
     if task_id is None:
@@ -313,7 +345,8 @@ def main(
         task_id=task_id,
         provider=cast(Provider, args.provider),
         model=cast(str, args.model),
-        monitor=cast(int, args.monitor),
+        monitor=monitor,
+        region=region,
         max_steps=cast(int, args.max_steps),
         execute=cast(bool, args.execute),
         allow_remote_image=cast(bool, args.allow_remote_image),
