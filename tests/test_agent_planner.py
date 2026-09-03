@@ -386,6 +386,66 @@ def test_qwen_planner_converts_relative_pointer_coordinates_to_desktop_pixels(
     assert "1000x1000" in prompt
 
 
+@pytest.mark.parametrize(
+    ("relative_action", "absolute_action"),
+    [
+        (
+            ClickAction(x=0, y=999),
+            ClickAction(x=-100, y=619),
+        ),
+        (
+            ScrollAction(clicks=-3, x=999, y=0),
+            ScrollAction(clicks=-3, x=699, y=20),
+        ),
+        (
+            DragAction(
+                start_x=0,
+                start_y=999,
+                end_x=999,
+                end_y=0,
+            ),
+            DragAction(
+                start_x=-100,
+                start_y=619,
+                end_x=699,
+                end_y=20,
+            ),
+        ),
+    ],
+)
+def test_qwen_planner_maps_grid_endpoints_using_original_image_after_resize(
+    relative_action: ClickAction | ScrollAction | DragAction,
+    absolute_action: ClickAction | ScrollAction | DragAction,
+) -> None:
+    decision = AgentDecision(
+        current_step_id="step-1",
+        rationale_summary="The target is at an image boundary",
+        action=relative_action,
+        expected_outcome="The boundary target changes",
+    )
+    processor = ProcessorProbe([decision.model_dump_json()])
+    planner = QwenTransformersPlanner(
+        processor=processor,
+        model=ModelProbe(),
+        max_image_side=400,
+    )
+    state = AgentState(
+        goal="Open the browser",
+        plan=task_plan(),
+        observation=observation(),
+        decisions=(),
+        results=(),
+    )
+
+    result = planner.next_action(state)
+
+    assert result.action == absolute_action
+    messages = cast(list[dict[str, Any]], processor.messages[0])
+    content = cast(list[dict[str, Any]], messages[0]["content"])
+    image = cast(Image.Image, content[0]["image"])
+    assert image.size == (400, 300)
+
+
 @pytest.mark.parametrize("coordinate", [-1, 1000])
 def test_qwen_planner_rejects_pointer_coordinates_outside_relative_grid(
     coordinate: int,

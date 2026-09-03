@@ -140,7 +140,35 @@ def test_cli_defaults_to_dry_run_and_passes_validated_runtime_options() -> None:
     assert len(configs) == 1
     assert configs[0].execute is False
     assert configs[0].provider == "fake"
+    assert configs[0].monitor == 1
+    assert configs[0].region is None
     assert runner.calls == [("Open Browser", 4)]
+
+
+@pytest.mark.parametrize(
+    "capture_args",
+    [
+        ["--monitor", "1", "--region", "0", "0", "760", "520"],
+        ["--region", "0", "0", "0", "520"],
+        ["--region", "0", "0", "760", "-1"],
+    ],
+)
+def test_cli_rejects_conflicting_or_non_positive_capture_regions(
+    capture_args: list[str],
+) -> None:
+    with pytest.raises(SystemExit) as captured:
+        cli.main(
+            [
+                "run",
+                "--task",
+                "Open Browser",
+                "--provider",
+                "qwen",
+                *capture_args,
+            ]
+        )
+
+    assert captured.value.code == 2
 
 
 def test_cli_passes_absolute_capture_region_without_a_monitor() -> None:
@@ -163,7 +191,7 @@ def test_cli_passes_absolute_capture_region_without_a_monitor() -> None:
             "qwen",
             "--region",
             "-60",
-            "20",
+            "-20",
             "760",
             "520",
         ],
@@ -173,7 +201,7 @@ def test_cli_passes_absolute_capture_region_without_a_monitor() -> None:
     assert exit_code == 0
     assert len(configs) == 1
     assert configs[0].monitor is None
-    assert configs[0].region == ScreenRegion(-60, 20, 760, 520)
+    assert configs[0].region == ScreenRegion(-60, -20, 760, 520)
 
 
 def test_cli_requires_explicit_remote_image_permission() -> None:
