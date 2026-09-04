@@ -149,6 +149,11 @@ def build_parser() -> argparse.ArgumentParser:
         add_help=False,
         help="Run a synthetic one-shot model check",
     )
+    subparsers.add_parser(
+        "training",
+        add_help=False,
+        help="Build data, train, and evaluate the Week 5 adapter",
+    )
 
     run = subparsers.add_parser("run", help="Run the bounded GUI agent loop")
     task_group = run.add_mutually_exclusive_group(required=True)
@@ -191,6 +196,12 @@ def _model_smoke_main(argv: Sequence[str]) -> int:
     from gui_agent.agent.smoke import main as model_smoke_main
 
     return model_smoke_main(argv)
+
+
+def _training_main(argv: Sequence[str]) -> int:
+    from gui_agent.training.cli import main as training_main
+
+    return training_main(argv)
 
 
 class _SyntheticObserver:
@@ -310,6 +321,8 @@ def main(
         return _dataset_main(remainder)
     if args.command == "model-smoke":
         return _model_smoke_main(remainder)
+    if args.command == "training":
+        return _training_main(remainder)
     if remainder:
         parser.error(f"unrecognized arguments: {' '.join(remainder)}")
     if args.provider == "openai-compatible" and not args.allow_remote_image:

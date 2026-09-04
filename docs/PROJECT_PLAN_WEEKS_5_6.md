@@ -362,7 +362,7 @@ def build_training_split(
 def write_training_split(split: TrainingSplit, output_dir: Path) -> TrainingManifest: ...
 ```
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 测试必须证明：同一 `(source, episode_id)` 不跨 split；相同输入与 seed 字节级一致；不同来源均有验证样本（来源样本数允许时）；缺图、损坏图、无动作和越界坐标被报告；WebArena task 不进入有监督动作训练。
 
@@ -370,11 +370,11 @@ def write_training_split(split: TrainingSplit, output_dir: Path) -> TrainingMani
 uv run pytest tests/test_training_schema.py tests/test_training_dataset.py tests/test_training_cli.py -v
 ```
 
-- [ ] **Step 2: 实现最小 schema 与切分**
+- [x] **Step 2: 实现最小 schema 与切分**
 
 `TrainingExample` 至少包含 `sample_id`、`source`、`episode_id`、`instruction`、`image_path`、`text_observation`、`target_action` 和源 revision。manifest 记录输入 SHA-256、切分 seed、每源计数、跳过原因、许可和输出 SHA-256。
 
-- [ ] **Step 3: 实现 `training build` CLI**
+- [x] **Step 3: 实现 `training build` CLI**
 
 ```powershell
 uv run gui-agent training build `
@@ -389,14 +389,14 @@ uv run gui-agent training build `
 
 `--input` 与 `--image-root` 使用可重复的 `source=path` 形式；未知来源、重复来源、缺少图片根和输出目录已存在时必须 fail closed。只有显式 `--overwrite` 才能重建输出，且只允许覆盖包含有效 Week 5 manifest 的目标目录。
 
-- [ ] **Step 4: GREEN**
+- [x] **Step 4: GREEN**
 
 ```powershell
 uv run pytest tests/test_training_schema.py tests/test_training_dataset.py tests/test_training_cli.py -v
 uv run mypy src/gui_agent/training src/gui_agent/cli.py tests/test_training_schema.py tests/test_training_dataset.py tests/test_training_cli.py
 ```
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```powershell
 git add src/gui_agent/training src/gui_agent/cli.py tests/test_training_schema.py tests/test_training_dataset.py tests/test_training_cli.py tests/fixtures/training
