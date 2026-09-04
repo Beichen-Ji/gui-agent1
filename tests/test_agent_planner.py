@@ -314,7 +314,9 @@ def test_qwen_planner_uses_in_memory_resized_image_and_parses_json() -> None:
     )
     assert planner.next_action(state) == finish
     messages = cast(list[dict[str, Any]], processor.messages[0])
-    content = cast(list[dict[str, Any]], messages[0]["content"])
+    assert messages[0]["role"] == "system"
+    assert "week4-baseline" in cast(str, messages[0]["content"])
+    content = cast(list[dict[str, Any]], messages[1]["content"])
     image = cast(Image.Image, content[0]["image"])
     assert image.size == (400, 300)
     assert content[0]["type"] == "image"
@@ -380,7 +382,7 @@ def test_qwen_planner_converts_relative_pointer_coordinates_to_desktop_pixels(
 
     assert result.action == absolute_action
     messages = cast(list[dict[str, Any]], processor.messages[0])
-    content = cast(list[dict[str, Any]], messages[0]["content"])
+    content = cast(list[dict[str, Any]], messages[1]["content"])
     prompt = cast(str, content[1]["text"])
     assert "image-relative" in prompt
     assert "1000x1000" in prompt
@@ -441,7 +443,7 @@ def test_qwen_planner_maps_grid_endpoints_using_original_image_after_resize(
 
     assert result.action == absolute_action
     messages = cast(list[dict[str, Any]], processor.messages[0])
-    content = cast(list[dict[str, Any]], messages[0]["content"])
+    content = cast(list[dict[str, Any]], messages[1]["content"])
     image = cast(Image.Image, content[0]["image"])
     assert image.size == (400, 300)
 

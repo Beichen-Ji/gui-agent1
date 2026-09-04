@@ -426,7 +426,7 @@ def action_from_grid(action: AgentAction, *, bounds: ScreenRegion, grid_size: in
 def format_training_messages(example: TrainingExample, profile: PromptProfile) -> list[dict[str, object]]: ...
 ```
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 覆盖负 origin、多显示器区域、边界像素、click/scroll/drag 往返误差不超过 1 个桌面像素，以及 type/hotkey 不被改写。Collator 测试使用 fake processor，断言 system/user/image/padding token 的 label 为 `-100`，assistant JSON token 保留。Prompt 测试固定 `week4-baseline` 与 `week5-grounded` 的关键约束和 profile ID。
 
@@ -434,11 +434,11 @@ def format_training_messages(example: TrainingExample, profile: PromptProfile) -
 uv run pytest tests/test_agent_coordinates.py tests/test_training_formatting.py tests/test_training_collator.py tests/test_agent_planner.py -v
 ```
 
-- [ ] **Step 2: 抽出并复用坐标转换**
+- [x] **Step 2: 抽出并复用坐标转换**
 
 删除 `qwen.py` 内重复的私有转换实现；planner 与训练 formatter 都调用 `coordinates.py`。所有训练图片先读取真实宽高，再把动作转为 1000 网格；不能假设固定屏幕分辨率。同时在 `prompts.py` 定义不可变 `PromptProfile` 注册表，保留 `week4-baseline` 并新增 `week5-grounded`，让训练和推理按同一个 profile ID 构造提示词。
 
-- [ ] **Step 3: GREEN 与提交**
+- [x] **Step 3: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_agent_coordinates.py tests/test_training_formatting.py tests/test_training_collator.py tests/test_agent_planner.py -v

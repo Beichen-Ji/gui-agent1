@@ -5,29 +5,25 @@ from typing import Any, TypeVar, cast
 from PIL import Image
 from pydantic import BaseModel
 
+from gui_agent.agent.coordinates import action_from_grid
 from gui_agent.agent.planner import PlannerError
-from gui_agent.agent.prompts import build_action_prompt, build_plan_prompt
+from gui_agent.agent.prompts import (
+    PromptProfile,
+    build_action_prompt,
+    build_plan_prompt,
+    get_prompt_profile,
+)
 from gui_agent.agent.types import (
     AgentAction,
     AgentDecision,
     AgentState,
-    ClickAction,
-    DragAction,
     Observation,
-    ScrollAction,
     TaskPlan,
 )
+from gui_agent.types import ScreenRegion
 
 DEFAULT_QWEN_MODEL = "Qwen/Qwen3-VL-4B-Instruct"
-QWEN_COORDINATE_GRID_SIZE = 1000
 ModelSchema = TypeVar("ModelSchema", bound=BaseModel)
-
-_QWEN_COORDINATE_INSTRUCTION = (
-    "For click, scroll, and drag actions, return image-relative integer coordinates "
-    "on a 1000x1000 grid. (0,0) is the image's top-left pixel and (999,999) "
-    "is its bottom-right pixel. Do not add the desktop origin; the application "
-    "converts these coordinates to absolute desktop pixels."
-)
 
 
 def _default_processor_loader(model_name: str, **kwargs: object) -> object:
@@ -52,81 +48,15 @@ def _json_object(text: str) -> str:
     return stripped[start : end + 1]
 
 
-def _desktop_coordinate(value: int, *, origin: int, extent: int) -> int:
-    if not 0 <= value < QWEN_COORDINATE_GRID_SIZE:
-        raise ValueError("Qwen pointer coordinates must be between 0 and 999")
-    return origin + (value * extent) // QWEN_COORDINATE_GRID_SIZE
-
-
 def _desktop_action(action: AgentAction, observation: Observation) -> AgentAction:
     screenshot = observation.screenshot
-    origin = screenshot.origin
-
-    if isinstance(action, ClickAction):
-        return action.model_copy(
-            update={
-                "x": _desktop_coordinate(
-                    action.x,
-                    origin=origin.x,
-                    extent=screenshot.width,
-                ),
-                "y": _desktop_coordinate(
-                    action.y,
-                    origin=origin.y,
-                    extent=screenshot.height,
-                ),
-            }
-        )
-
-    if isinstance(action, ScrollAction):
-        if action.x is None:
-            if action.y is None:
-                return action
-            raise ValueError("scroll x and y must be provided together")
-        if action.y is None:
-            raise ValueError("scroll x and y must be provided together")
-        return action.model_copy(
-            update={
-                "x": _desktop_coordinate(
-                    action.x,
-                    origin=origin.x,
-                    extent=screenshot.width,
-                ),
-                "y": _desktop_coordinate(
-                    action.y,
-                    origin=origin.y,
-                    extent=screenshot.height,
-                ),
-            }
-        )
-
-    if isinstance(action, DragAction):
-        return action.model_copy(
-            update={
-                "start_x": _desktop_coordinate(
-                    action.start_x,
-                    origin=origin.x,
-                    extent=screenshot.width,
-                ),
-                "start_y": _desktop_coordinate(
-                    action.start_y,
-                    origin=origin.y,
-                    extent=screenshot.height,
-                ),
-                "end_x": _desktop_coordinate(
-                    action.end_x,
-                    origin=origin.x,
-                    extent=screenshot.width,
-                ),
-                "end_y": _desktop_coordinate(
-                    action.end_y,
-                    origin=origin.y,
-                    extent=screenshot.height,
-                ),
-            }
-        )
-
-    return action
+    bounds = ScreenRegion(
+        screenshot.origin.x,
+        screenshot.origin.y,
+        screenshot.width,
+        screenshot.height,
+    )
+    return action_from_grid(action, bounds=bounds)
 
 
 def _desktop_decision(
@@ -150,6 +80,7 @@ class QwenTransformersPlanner:
         model_dtype: object | None = None,
         max_image_side: int = 1280,
         max_new_tokens: int = 512,
+        prompt_profile: str | PromptProfile = "week4-baseline",
     ) -> None:
         if not model_name.strip():
             raise ValueError("model_name must not be blank")
@@ -167,6 +98,7 @@ class QwenTransformersPlanner:
         self._model_dtype = model_dtype
         self._max_image_side = max_image_side
         self._max_new_tokens = max_new_tokens
+        self._prompt_profile = get_prompt_profile(prompt_profile)
 
     def _ensure_loaded(self) -> tuple[Any, Any]:
         if self._processor is None or self._model is None:
@@ -210,9 +142,18 @@ class QwenTransformersPlanner:
             separators=(",", ":"),
         )
         coordinate_instruction = (
-            f"\n{_QWEN_COORDINATE_INSTRUCTION}" if schema is AgentDecision else ""
+            f"\n{self._prompt_profile.coordinate_instruction}"
+            if schema is AgentDecision
+            else ""
         )
         messages = [
+            {
+                "role": "system",
+                "content": (
+                    f"{self._prompt_profile.system_prompt}\n"
+                    f"Prompt profile: {self._prompt_profile.id}."
+                ),
+            },
             {
                 "role": "user",
                 "content": [
@@ -256,12 +197,16 @@ class QwenTransformersPlanner:
             raise PlannerError(f"local model failed to produce {schema.__name__}") from exc
 
     def create_plan(self, goal: str, observation: Observation) -> TaskPlan:
-        return self._invoke(TaskPlan, build_plan_prompt(goal, observation), observation)
+        return self._invoke(
+            TaskPlan,
+            build_plan_prompt(goal, observation, profile=self._prompt_profile),
+            observation,
+        )
 
     def next_action(self, state: AgentState) -> AgentDecision:
         return self._invoke(
             AgentDecision,
-            build_action_prompt(state),
+            build_action_prompt(state, profile=self._prompt_profile),
             state.observation,
         )
 
