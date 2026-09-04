@@ -45,6 +45,7 @@ class TrainingRunManifest(BaseModel):
     mode: Literal["check", "train"]
     base_model: str
     prompt_profile: str
+    coordinate_grid_size: int = Field(ge=2)
     seed: int = Field(ge=0)
     config_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     data_manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
@@ -346,6 +347,7 @@ def run_training(
         mode="check" if check_only else "train",
         base_model=config.base_model,
         prompt_profile=config.prompt_profile,
+        coordinate_grid_size=config.coordinate_grid_size,
         seed=config.seed,
         config_sha256=hashlib.sha256(_canonical_config(config)).hexdigest(),
         data_manifest_sha256=hashlib.sha256(data_manifest_bytes).hexdigest(),

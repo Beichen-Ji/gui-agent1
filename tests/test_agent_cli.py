@@ -204,6 +204,48 @@ def test_cli_passes_absolute_capture_region_without_a_monitor() -> None:
     assert configs[0].region == ScreenRegion(-60, -20, 760, 520)
 
 
+def test_cli_passes_optional_adapter_only_to_qwen_runtime(tmp_path: Path) -> None:
+    configs: list[cli.RunConfig] = []
+    runner = RuntimeProbe(run_result())
+
+    def runtime_factory(
+        config: cli.RunConfig,
+        _input_fn: Callable[[str], str],
+    ) -> RuntimeProbe:
+        configs.append(config)
+        return runner
+
+    adapter = tmp_path / "adapter-output"
+    assert cli.main(
+        [
+            "run",
+            "--task",
+            "Open Browser",
+            "--provider",
+            "qwen",
+            "--adapter",
+            str(adapter),
+        ],
+        runtime_factory=runtime_factory,
+    ) == 0
+
+    assert configs[0].adapter_path == adapter
+
+    with pytest.raises(SystemExit) as captured:
+        cli.main(
+            [
+                "run",
+                "--task",
+                "Open Browser",
+                "--provider",
+                "fake",
+                "--adapter",
+                str(adapter),
+            ]
+        )
+    assert captured.value.code == 2
+
+
 def test_cli_requires_explicit_remote_image_permission() -> None:
     with pytest.raises(SystemExit) as captured:
         cli.main(

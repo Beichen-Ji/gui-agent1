@@ -250,6 +250,7 @@ def test_run_training_writes_hashed_manifest_and_refuses_existing_output(
     ).hexdigest()
     stored = json.loads((output_dir / "run-manifest.json").read_text(encoding="utf-8"))
     assert stored["prompt_profile"] == "week5-grounded"
+    assert stored["coordinate_grid_size"] == 1000
 
     with pytest.raises(ValueError, match="already exists"):
         run_training(

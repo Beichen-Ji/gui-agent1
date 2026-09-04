@@ -1,7 +1,10 @@
 import base64
+import hashlib
 import io
+import json
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
@@ -540,6 +543,124 @@ def test_qwen_planner_loads_model_lazily_without_requiring_torch_for_fakes(
     assert calls[1][0:2] == ("model", "Qwen/Qwen3-VL-4B-Instruct")
     assert calls[1][2]["device_map"] == "auto"
     assert calls[1][2]["dtype"] is dtype_marker
+
+
+def _adapter_output(
+    tmp_path: Path,
+    *,
+    base_model: str = "Qwen/Qwen3-VL-4B-Instruct",
+    prompt_profile: str = "week5-grounded",
+    coordinate_grid_size: int = 1000,
+) -> Path:
+    output = tmp_path / "training-output"
+    adapter = output / "adapter"
+    adapter.mkdir(parents=True)
+    weight = b"adapter"
+    config = json.dumps({"base_model_name_or_path": base_model}).encode()
+    (adapter / "adapter_model.safetensors").write_bytes(weight)
+    (adapter / "adapter_config.json").write_bytes(config)
+    manifest = {
+        "kind": "gui-agent-week5-training-run",
+        "base_model": base_model,
+        "prompt_profile": prompt_profile,
+        "coordinate_grid_size": coordinate_grid_size,
+        "output_sha256": {
+            "adapter/adapter_model.safetensors": hashlib.sha256(weight).hexdigest(),
+            "adapter/adapter_config.json": hashlib.sha256(config).hexdigest(),
+        },
+    }
+    (output / "run-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return output
+
+
+def test_qwen_adapter_path_must_exist(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="adapter path"):
+        QwenTransformersPlanner(adapter_path=tmp_path / "missing")
+
+
+def test_qwen_adapter_manifest_must_match_the_base_model(tmp_path: Path) -> None:
+    output = _adapter_output(tmp_path, base_model="Qwen/different-model")
+
+    with pytest.raises(ValueError, match="base model"):
+        QwenTransformersPlanner(adapter_path=output)
+
+
+def test_qwen_adapter_manifest_must_match_grid_and_explicit_prompt(tmp_path: Path) -> None:
+    wrong_grid = _adapter_output(tmp_path / "grid", coordinate_grid_size=999)
+    with pytest.raises(ValueError, match="coordinate grid"):
+        QwenTransformersPlanner(adapter_path=wrong_grid)
+
+    output = _adapter_output(tmp_path / "prompt")
+    with pytest.raises(ValueError, match="prompt profile"):
+        QwenTransformersPlanner(
+            adapter_path=output,
+            prompt_profile="week4-baseline",
+        )
+
+
+def test_qwen_adapter_manifest_detects_weight_tampering(tmp_path: Path) -> None:
+    output = _adapter_output(tmp_path)
+    (output / "adapter" / "adapter_model.safetensors").write_bytes(b"modified")
+
+    with pytest.raises(ValueError, match="hash mismatch"):
+        QwenTransformersPlanner(adapter_path=output)
+
+
+def test_qwen_loads_validated_adapter_after_the_base_model(tmp_path: Path) -> None:
+    output = _adapter_output(tmp_path)
+    plan = task_plan()
+    processor = ProcessorProbe([plan.model_dump_json()])
+    base_model = ModelProbe()
+    adapted_model = ModelProbe()
+    calls: list[str] = []
+
+    def processor_loader(_model_name: str, **_kwargs: object) -> object:
+        calls.append("processor")
+        return processor
+
+    def model_loader(_model_name: str, **_kwargs: object) -> object:
+        calls.append("base")
+        return base_model
+
+    def adapter_loader(model: object, path: Path) -> object:
+        calls.append("adapter")
+        assert model is base_model
+        assert path == output / "adapter"
+        return adapted_model
+
+    planner = QwenTransformersPlanner(
+        adapter_path=output,
+        processor_loader=processor_loader,
+        model_loader=model_loader,
+        adapter_loader=adapter_loader,
+        model_dtype=object(),
+    )
+
+    assert planner.create_plan("Open the browser", observation()) == plan
+    assert calls == ["processor", "base", "adapter"]
+    messages = cast(list[dict[str, Any]], processor.messages[0])
+    assert "week5-grounded" in cast(str, messages[0]["content"])
+
+
+def test_qwen_preserves_adapter_loading_error_as_cause(tmp_path: Path) -> None:
+    output = _adapter_output(tmp_path)
+    adapter_error = RuntimeError("incompatible adapter tensors")
+
+    def adapter_loader(_model: object, _path: Path) -> object:
+        raise adapter_error
+
+    planner = QwenTransformersPlanner(
+        adapter_path=output,
+        processor_loader=lambda *_args, **_kwargs: ProcessorProbe([]),
+        model_loader=lambda *_args, **_kwargs: ModelProbe(),
+        adapter_loader=adapter_loader,
+        model_dtype=object(),
+    )
+
+    with pytest.raises(PlannerError, match="adapter") as captured:
+        planner.create_plan("Open the browser", observation())
+
+    assert captured.value.__cause__ is adapter_error
 
 
 def test_qwen_planner_preserves_malformed_json_as_cause() -> None:

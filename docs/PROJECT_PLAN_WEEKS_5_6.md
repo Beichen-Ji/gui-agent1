@@ -527,7 +527,7 @@ QLoRA check，无需分辨率回退。单步 adapter 可保存并重新加载，
 
 **Produces:** `--adapter <path>`；未指定时行为与 Week 4 完全一致。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 测试 adapter 路径不存在、base model 不匹配、adapter 加载失败、成功加载顺序和不带 adapter 的兼容行为。
 
@@ -535,7 +535,7 @@ QLoRA check，无需分辨率回退。单步 adapter 可保存并重新加载，
 uv run pytest tests/test_agent_planner.py tests/test_agent_cli.py -v
 ```
 
-- [ ] **Step 2: 最小实现**
+- [x] **Step 2: 最小实现**
 
 ```python
 class QwenTransformersPlanner:
@@ -544,7 +544,7 @@ class QwenTransformersPlanner:
 
 使用 `PeftModel.from_pretrained(base_model, adapter_path)`；校验 adapter manifest 声明的 base model、坐标 grid 和 prompt profile 与当前运行配置相容。
 
-- [ ] **Step 3: GREEN 与提交**
+- [x] **Step 3: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_agent_planner.py tests/test_agent_cli.py -v

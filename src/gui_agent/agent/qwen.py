@@ -1,5 +1,8 @@
+import hashlib
 import json
 from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, TypeVar, cast
 
 from PIL import Image
@@ -24,6 +27,13 @@ from gui_agent.types import ScreenRegion
 
 DEFAULT_QWEN_MODEL = "Qwen/Qwen3-VL-4B-Instruct"
 ModelSchema = TypeVar("ModelSchema", bound=BaseModel)
+AdapterLoader = Callable[[object, Path], object]
+
+
+@dataclass(frozen=True, slots=True)
+class _AdapterSpec:
+    adapter_dir: Path
+    prompt_profile: PromptProfile
 
 
 def _default_processor_loader(model_name: str, **kwargs: object) -> object:
@@ -37,6 +47,80 @@ def _default_model_loader(model_name: str, **kwargs: object) -> object:
     from transformers import AutoModelForMultimodalLM
 
     return AutoModelForMultimodalLM.from_pretrained(model_name, **kwargs)
+
+
+def _default_adapter_loader(model: object, adapter_dir: Path) -> object:
+    from peft import PeftModel
+
+    loader = cast(Callable[..., object], PeftModel.from_pretrained)
+    return loader(model, adapter_dir, is_trainable=False)
+
+
+def _read_json_object(path: Path, *, label: str) -> dict[str, object]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"could not read {label}: {path}") from error
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must contain a JSON object: {path}")
+    return cast(dict[str, object], value)
+
+
+def _validated_adapter(
+    adapter_path: Path,
+    *,
+    model_name: str,
+    requested_profile: str | PromptProfile | None,
+) -> _AdapterSpec:
+    resolved = adapter_path.resolve()
+    if not resolved.is_dir():
+        raise ValueError(f"adapter path is not a directory: {adapter_path}")
+    if (resolved / "run-manifest.json").is_file():
+        output_root = resolved
+        adapter_dir = output_root / "adapter"
+    elif resolved.name == "adapter" and (resolved.parent / "run-manifest.json").is_file():
+        output_root = resolved.parent
+        adapter_dir = resolved
+    else:
+        raise ValueError("adapter path requires a sibling or child run-manifest.json")
+    manifest = _read_json_object(
+        output_root / "run-manifest.json",
+        label="adapter run manifest",
+    )
+    if manifest.get("kind") != "gui-agent-week5-training-run":
+        raise ValueError("adapter run manifest has an unsupported kind")
+    if manifest.get("base_model") != model_name:
+        raise ValueError("adapter base model does not match the requested model")
+    if manifest.get("coordinate_grid_size") != 1000:
+        raise ValueError("adapter coordinate grid does not match the Qwen runtime")
+    manifest_profile = manifest.get("prompt_profile")
+    if not isinstance(manifest_profile, str):
+        raise ValueError("adapter run manifest has no prompt profile")
+    selected_profile = get_prompt_profile(manifest_profile)
+    if requested_profile is not None:
+        requested = get_prompt_profile(requested_profile)
+        if requested.id != selected_profile.id:
+            raise ValueError("adapter prompt profile does not match the requested profile")
+
+    adapter_config = _read_json_object(
+        adapter_dir / "adapter_config.json",
+        label="adapter config",
+    )
+    if adapter_config.get("base_model_name_or_path") != model_name:
+        raise ValueError("adapter config base model does not match the requested model")
+    raw_hashes = manifest.get("output_sha256")
+    if not isinstance(raw_hashes, dict):
+        raise ValueError("adapter run manifest has no output hashes")
+    for filename in ("adapter_model.safetensors", "adapter_config.json"):
+        path = adapter_dir / filename
+        try:
+            actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError as error:
+            raise ValueError(f"adapter file is missing: {path}") from error
+        expected = raw_hashes.get(f"adapter/{filename}")
+        if expected != actual:
+            raise ValueError(f"adapter file hash mismatch: {filename}")
+    return _AdapterSpec(adapter_dir=adapter_dir, prompt_profile=selected_profile)
 
 
 def _json_object(text: str) -> str:
@@ -80,7 +164,9 @@ class QwenTransformersPlanner:
         model_dtype: object | None = None,
         max_image_side: int = 1280,
         max_new_tokens: int = 512,
-        prompt_profile: str | PromptProfile = "week4-baseline",
+        prompt_profile: str | PromptProfile | None = None,
+        adapter_path: Path | None = None,
+        adapter_loader: AdapterLoader = _default_adapter_loader,
     ) -> None:
         if not model_name.strip():
             raise ValueError("model_name must not be blank")
@@ -98,7 +184,22 @@ class QwenTransformersPlanner:
         self._model_dtype = model_dtype
         self._max_image_side = max_image_side
         self._max_new_tokens = max_new_tokens
-        self._prompt_profile = get_prompt_profile(prompt_profile)
+        self._adapter = (
+            _validated_adapter(
+                adapter_path,
+                model_name=model_name,
+                requested_profile=prompt_profile,
+            )
+            if adapter_path is not None
+            else None
+        )
+        self._prompt_profile = (
+            self._adapter.prompt_profile
+            if self._adapter is not None
+            else get_prompt_profile(prompt_profile or "week4-baseline")
+        )
+        self._adapter_loader = adapter_loader
+        self._adapter_loaded = False
 
     def _ensure_loaded(self) -> tuple[Any, Any]:
         if self._processor is None or self._model is None:
@@ -117,6 +218,17 @@ class QwenTransformersPlanner:
                 )
             except Exception as exc:
                 raise PlannerError(f"could not load local model {self.model_name}") from exc
+        if self._adapter is not None and not self._adapter_loaded:
+            try:
+                self._model = self._adapter_loader(
+                    self._model,
+                    self._adapter.adapter_dir,
+                )
+                self._adapter_loaded = True
+            except Exception as exc:
+                raise PlannerError(
+                    f"could not load LoRA adapter {self._adapter.adapter_dir}"
+                ) from exc
         return cast(Any, self._processor), cast(Any, self._model)
 
     def _image(self, observation: Observation) -> Image.Image:
