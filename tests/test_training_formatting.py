@@ -54,6 +54,9 @@ def test_training_messages_use_real_image_size_and_grid_target(tmp_path: Path) -
     system_content = messages[0]["content"]
     assert isinstance(system_content, str)
     assert "week5-grounded" in system_content
+    assert "Return exactly one JSON object matching this schema" in system_content
+    assert '"discriminator"' in system_content
+    assert '"kind"' in system_content
     user_content = messages[1]["content"]
     assert isinstance(user_content, list)
     assert user_content[0] == {"type": "image", "image": image_path.as_posix()}

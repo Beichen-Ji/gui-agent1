@@ -2,9 +2,11 @@ import json
 from pathlib import Path
 
 from PIL import Image, UnidentifiedImageError
+from pydantic import TypeAdapter
 
 from gui_agent.agent.coordinates import action_to_grid
 from gui_agent.agent.prompts import PromptProfile
+from gui_agent.agent.types import AgentAction
 from gui_agent.training.schema import TrainingExample
 from gui_agent.types import ScreenRegion
 
@@ -29,12 +31,19 @@ def format_training_messages(
         bounds=_image_bounds(image_path),
     )
     observation = example.text_observation or "No text observation was supplied."
+    action_schema = json.dumps(
+        TypeAdapter(AgentAction).json_schema(),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     system_text = (
         f"{profile.system_prompt}\n"
         f"Prompt profile: {profile.id}.\n"
         f"{profile.action_instruction}\n"
         f"{profile.coordinate_instruction}\n"
-        "Return only one structured action JSON object."
+        "Return exactly one JSON object matching this schema:\n"
+        f"{action_schema}"
     )
     user_text = f"Task: {example.instruction}\nText observation: {observation}"
     target_text = json.dumps(

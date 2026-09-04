@@ -8,7 +8,9 @@ from typing import cast
 from pydantic import ValidationError
 
 from gui_agent.datasets.schema import DatasetSource, NormalizedGUIRecord
+from gui_agent.training.config import load_training_config
 from gui_agent.training.dataset import build_training_split, write_training_split
+from gui_agent.training.trainer import run_training
 
 _SOURCES = frozenset({"screenagent", "mind2web", "webarena"})
 
@@ -37,6 +39,16 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument("--seed", type=_non_negative_integer, required=True)
     build.add_argument("--output", type=Path, required=True)
     build.add_argument("--overwrite", action="store_true")
+    for command_name in ("check", "train"):
+        command = commands.add_parser(
+            command_name,
+            help=f"{'Check' if command_name == 'check' else 'Train'} a QLoRA adapter",
+        )
+        command.add_argument("--config", type=Path, required=True)
+        command.add_argument("--data", type=Path, required=True)
+        command.add_argument("--output", type=Path, required=True)
+        if command_name == "train":
+            command.add_argument("--resume-from-checkpoint", type=Path)
     return parser
 
 
@@ -84,6 +96,27 @@ def _load_records(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.training_command in {"check", "train"}:
+        try:
+            config = load_training_config(cast(Path, args.config))
+            resume = cast(Path | None, getattr(args, "resume_from_checkpoint", None))
+            run_manifest = run_training(
+                config,
+                cast(Path, args.data),
+                cast(Path, args.output),
+                check_only=args.training_command == "check",
+                resume_from_checkpoint=resume,
+            )
+        except (OSError, RuntimeError, ValueError) as error:
+            parser.error(str(error))
+        print(
+            json.dumps(
+                run_manifest.model_dump(mode="json"),
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
     try:
         inputs = _source_paths(args.input, label="--input")
         image_roots = _source_paths(args.image_root, label="--image-root")
@@ -104,14 +137,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             seed=cast(int, args.seed),
             input_sha256=hashes,
         )
-        manifest = write_training_split(
+        build_manifest = write_training_split(
             split,
             cast(Path, args.output),
             overwrite=cast(bool, args.overwrite),
         )
     except ValueError as error:
         parser.error(str(error))
-    print(json.dumps(manifest.model_dump(mode="json"), ensure_ascii=False, indent=2))
+    print(json.dumps(build_manifest.model_dump(mode="json"), ensure_ascii=False, indent=2))
     return 0
 
 

@@ -467,7 +467,7 @@ def attach_lora(model: object, config: LoRATrainingConfig) -> object: ...
 def run_training(config: LoRATrainingConfig, data_dir: Path, output_dir: Path) -> TrainingRunManifest: ...
 ```
 
-- [ ] **Step 1: RED（普通测试不加载模型）**
+- [x] **Step 1: RED（普通测试不加载模型）**
 
 用 fake model/module tree 验证量化参数、视觉塔冻结、LoRA target module、可训练参数比例、输出目录拒绝覆盖和 manifest。配置中的 target module 后缀必须先展开为语言骨干中的完整模块名，并显式排除 `visual`、`vision`、`merger` 路径，防止 PEFT 重新给冻结的视觉塔注入可训练参数。真实 GPU 测试标记 `integration`。
 
@@ -475,7 +475,7 @@ def run_training(config: LoRATrainingConfig, data_dir: Path, output_dir: Path) -
 uv run pytest tests/test_training_lora.py -v
 ```
 
-- [ ] **Step 2: 实现显式 check 命令**
+- [x] **Step 2: 实现显式 check 命令**
 
 ```powershell
 $env:HF_HOME = Join-Path $PWD ".cache\huggingface"
@@ -487,11 +487,11 @@ uv run gui-agent training check `
 
 check 必须完成：4-bit 加载、LoRA 注入、一个 forward/backward/optimizer step、adapter 保存、释放模型、重新加载 adapter、一次结构化生成。记录显卡、CUDA/PyTorch/Transformers/PEFT/bitsandbytes 版本、峰值显存和实际图片像素上限。
 
-- [ ] **Step 3: 可行性门禁**
+- [x] **Step 3: 可行性门禁**
 
 若本机按规定的唯一分辨率回退后仍失败，则保留失败报告，在 Colab/Linux 中运行完全相同的命令和配置。禁止为了“跑通”转成全参数训练或删掉图像输入。
 
-- [ ] **Step 4: 实现正式训练**
+- [x] **Step 4: 实现正式训练**
 
 ```powershell
 uv run gui-agent training train `
@@ -502,7 +502,7 @@ uv run gui-agent training train `
 
 训练固定 seed；保留最近两个 checkpoint；最终输出只保存 adapter，不合并基础模型；中断后必须显式 `--resume-from-checkpoint` 才能续训。
 
-- [ ] **Step 5: GREEN 与提交**
+- [x] **Step 5: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_training_lora.py -v
@@ -510,6 +510,11 @@ uv run pytest -m integration tests/integration/test_lora_smoke.py -v
 git add src/gui_agent/training src/gui_agent/cli.py tests/test_training_lora.py tests/integration/test_lora_smoke.py
 git commit -m "feat: train Qwen GUI adapters with QLoRA"
 ```
+
+执行记录（2026-09-04）：本机 RTX 5070 Ti 使用默认 `401408` 像素上限完成真实
+QLoRA check，无需分辨率回退。单步 adapter 可保存并重新加载，结构化 `AgentAction`
+生成通过；峰值已分配显存 `7,554,889,728` bytes。详细本地产物位于被 Git 忽略的
+`artifacts/week5/integration-lora-smoke/`。
 
 ## Task 5: 让现有 Planner 可加载 adapter
 
