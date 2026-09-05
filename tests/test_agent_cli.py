@@ -178,7 +178,9 @@ def test_cli_passes_configured_success_criteria_but_not_for_free_text() -> None:
         runtime_factory=lambda _config, _input: free_runner,
     ) == 0
 
-    assert task_runner.calls[0][1] == "The Browser area is visible and marked open."
+    assert task_runner.calls[0][1] == (
+        "The Browser area displays 'local deterministic search'."
+    )
     assert free_runner.calls[0][1] is None
 
 
@@ -318,17 +320,20 @@ def test_fake_execute_path_denies_wrong_confirmation_without_desktop_input(
     assert '"failure_stage": "policy"' in output
 
 
-def test_cli_loads_exactly_the_five_week4_task_ids() -> None:
+def test_cli_loads_the_bundled_local_testbed_task_ids() -> None:
     tasks = cli.load_task_definitions(cli.DEFAULT_TASKS_PATH)
 
     assert set(tasks) == {
         "open-browser",
         "search-content",
+        "delayed-search",
         "open-file",
         "send-message",
         "close-app",
     }
     assert all(task.actions for task in tasks.values())
+    assert all("'" in task.success_criteria for task in tasks.values())
+    assert "Search result: week6 delayed" in tasks["delayed-search"].success_criteria
 
 
 def test_cli_trace_redacts_typed_text_and_writes_only_when_requested(
@@ -399,6 +404,13 @@ def test_cli_accepts_explicit_v2_runtime_options() -> None:
     configs: list[cli.RunConfig] = []
     runner = RuntimeProbe(run_result())
 
+    def capture_config(
+        config: cli.RunConfig,
+        _input_fn: Callable[[str], str],
+    ) -> RuntimeProbe:
+        configs.append(config)
+        return runner
+
     exit_code = cli.main(
         [
             "run",
@@ -417,7 +429,7 @@ def test_cli_accepts_explicit_v2_runtime_options() -> None:
             "--log-level",
             "DEBUG",
         ],
-        runtime_factory=lambda config, _input: configs.append(config) or runner,
+        runtime_factory=capture_config,
     )
 
     assert exit_code == 0
@@ -504,3 +516,38 @@ def test_testbed_rejects_file_traversal_and_tracks_its_own_close_state(
 
     state.close()
     assert state.snapshot()["closed"] is True
+
+
+def test_testbed_transient_profile_ignores_only_the_first_search(tmp_path: Path) -> None:
+    state = gui_testbed.TestbedState(
+        tmp_path / "testbed",
+        fault_profile="transient",
+    )
+
+    first = state.search("week6 recovery")
+    second = state.search("week6 recovery")
+
+    assert first == "Search result: transient action ignored"
+    assert second == "Search result: week6 recovery"
+    assert state.snapshot()["faults_triggered"] == 1
+
+
+def test_testbed_delayed_profile_exposes_an_explicit_completion_hook(
+    tmp_path: Path,
+) -> None:
+    state = gui_testbed.TestbedState(
+        tmp_path / "testbed",
+        fault_profile="delayed",
+    )
+
+    assert state.search("week6 delayed") == "Search result: pending"
+    assert state.snapshot()["search_result"] == "Search result: pending"
+    assert state.complete_delayed_search() == "Search result: week6 delayed"
+
+
+def test_testbed_rejects_unknown_fault_profile(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="fault profile"):
+        gui_testbed.TestbedState(
+            tmp_path / "testbed",
+            fault_profile="unsafe",  # type: ignore[arg-type]
+        )

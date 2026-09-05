@@ -1,6 +1,6 @@
-# GUI Agent：桌面感知、数据与多模态规划基础
+# GUI Agent：鲁棒桌面感知、控制与多模态规划
 
-这是“大模型 GUI Agent”实习项目第 1.6 节至第 5 周的实现：先用 MSS、EasyOCR 和 PyAutoGUI 建立桌面感知/安全控制，再加入公开 GUI 数据标准化、结构化 Agent、本地 Qwen 多模态规划、安全的观察—执行循环，以及可复现的 4-bit QLoRA 训练与离线评测。项目不包含第 1 周调研报告。
+这是“大模型 GUI Agent”实习项目第 1.6 节至第 6 周的实现：先用 MSS、EasyOCR 和 PyAutoGUI 建立桌面感知/安全控制，再加入公开 GUI 数据标准化、结构化 Agent、本地 Qwen 多模态规划、安全的观察—执行循环、可复现的 4-bit QLoRA 训练与离线评测，以及带验证、限次恢复和脱敏事件流的鲁棒 Agent v2。项目不包含第 1 周调研报告。
 
 ## 已实现
 
@@ -16,10 +16,14 @@
 - 默认 dry-run、逐动作安全确认、最大步数和重复动作停止的端到端 Agent 循环。
 - 按 episode 隔离的训练/验证切分、Qwen 多模态 collator 和 4-bit QLoRA 训练入口。
 - 可选 PEFT adapter 加载，以及基础提示词、grounded 提示词和 adapter 的固定合成评测。
+- 显式任务进度、稳定 step ID、最多一次受控重规划，以及已完成步骤不可回退的约束。
+- 结果验证、固定 reason code、每步最多两次重试、0.5/1.0 秒退避和禁止原样重放动作。
+- `fast`、`balanced`、`accurate` OCR profile、合成 benchmark 与完全相同帧的安全缓存。
+- stderr 实时状态、脱敏 `events.jsonl` 和最终 `run-summary.json`。
 - 只使用合成界面的模型 smoke test；普通测试不会下载或加载模型。
 - Windows + Python 3.11 CI；普通 CI 不下载模型、不截图、不操作鼠标键盘。
 
-架构图、模块边界和安全设计见[桌面感知与控制设计](docs/superpowers/specs/2026-08-17-desktop-perception-control-design.md)。第 5/6 周范围见[项目计划](docs/PROJECT_PLAN_WEEKS_5_6.md)，模型和训练环境分别见[模型 Provider 配置指南](docs/setup/model-provider-setup.md)与 [LoRA 训练指南](docs/setup/lora-training.md)。
+架构图、模块边界和安全设计见[桌面感知与控制设计](docs/superpowers/specs/2026-08-17-desktop-perception-control-design.md)。第 5/6 周范围见[项目计划](docs/PROJECT_PLAN_WEEKS_5_6.md)，运行参数见[鲁棒 Agent v2 使用说明](docs/setup/robust-agent-v2.md)，验证结果见[Week 6 鲁棒性报告](docs/test-reports/week6-robustness-report.md)。模型和训练环境分别见[模型 Provider 配置指南](docs/setup/model-provider-setup.md)与 [LoRA 训练指南](docs/setup/lora-training.md)。
 
 ## 安全规则
 
@@ -118,6 +122,37 @@ uv run gui-agent training evaluate `
 
 训练和评测需要本地 CUDA 模型，但不需要 Qwen API key。`data/`、`artifacts/`、checkpoint 和 `*.safetensors` 均被 Git 忽略。当前实验没有得到准确率提升，因此 Week 6 默认不加载该 adapter；完整指标见 [Week 5 QLoRA 对比报告](docs/test-reports/week5-lora-comparison-report.md)。
 
+## Week 6：鲁棒 Agent v2
+
+先运行完全离线、不会读取真实桌面的 8 个故障注入场景：
+
+```powershell
+uv run --no-sync pytest tests/integration/test_week6_robustness.py `
+  -m integration -v `
+  --basetemp artifacts/pytest-week6-integration
+```
+
+要人工观察本地 testbed 的瞬态失败模式，在一个终端运行：
+
+```powershell
+uv run --no-sync python examples/gui_testbed.py --fault-profile transient
+```
+
+另开一个终端先做 Qwen dry-run：
+
+```powershell
+uv run --no-sync gui-agent run `
+  --task-id delayed-search `
+  --provider qwen `
+  --ocr-profile balanced `
+  --max-steps 12 `
+  --max-retries-per-step 2 `
+  --max-replans 1 `
+  --run-dir artifacts/agent-runs/week6-delayed-search
+```
+
+确认每个 proposed action 都正确之后，才由操作者显式加上 `--execute`，并逐动作输入 `EXECUTE ACTION`。完整参数、事件日志和故障边界见[鲁棒 Agent v2 使用说明](docs/setup/robust-agent-v2.md)。
+
 ## 检查与测试
 
 ```powershell
@@ -127,7 +162,7 @@ uv run mypy src tests examples scripts
 uv run pytest -m "not integration" --cov=gui_agent --cov-report=term-missing
 ```
 
-2026-09-04 本机结果为 332 项普通测试全部通过、总覆盖率 86%，另有 2 项需显式启用的模型/GPU 集成测试。本轮真实 QLoRA 单步检查、正式训练和四组固定评测结果见 [Week 5 QLoRA 对比报告](docs/test-reports/week5-lora-comparison-report.md)；历史基线见 [Week 3 测试报告](docs/test-reports/week3-agent-foundation-report.md)与 [Week 2 测试报告](docs/test-reports/week2-test-report.md)。
+2026-09-05 本机结果为 404 项普通测试全部通过、总覆盖率 87%，另有 8 项 Week 6 故障注入测试全部通过；其余 2 项模型/GPU integration 仍需显式启用。本轮鲁棒性结果见 [Week 6 测试报告](docs/test-reports/week6-robustness-report.md)，真实 QLoRA 单步检查、正式训练和四组固定评测结果见 [Week 5 QLoRA 对比报告](docs/test-reports/week5-lora-comparison-report.md)；历史基线见 [Week 3 测试报告](docs/test-reports/week3-agent-foundation-report.md)与 [Week 2 测试报告](docs/test-reports/week2-test-report.md)。
 
 ## 目录
 
@@ -138,12 +173,17 @@ src/gui_agent/
 │  ├─ types.py              # 任务计划、动作、决策、观察与结果 schema
 │  ├─ prompts.py            # 脱敏后的计划/动作 prompt
 │  ├─ planner.py            # fake 与 OpenAI-compatible Planner
-│  └─ qwen.py               # 本地 Qwen Transformers Planner
+│  ├─ qwen.py               # 本地 Qwen Transformers Planner
+│  ├─ verification.py       # 动作结果与完成条件验证
+│  ├─ retry.py              # 限次重试和退避策略
+│  └─ events.py             # 实时脱敏结构化事件
 ├─ datasets/                # 三个公开数据源的适配器、schema 与 writer
 ├─ training/                # 确定性 split、QLoRA、adapter manifest 与固定评测
 ├─ perception/
 │  ├─ capture.py            # MSS 截图
-│  ├─ ocr.py                # OCR 协议与 EasyOCR 后端
+│  ├─ ocr.py                # OCR 协议、profile 与 EasyOCR 后端
+│  ├─ preprocessing.py      # profile 对应的图像预处理
+│  ├─ benchmark.py          # OCR 准确率/延迟评测
 │  └─ localization.py       # 查找与标注
 └─ control/
    └─ controller.py         # dry-run 控制器与 PyAutoGUI 适配器
@@ -163,6 +203,8 @@ docs/                       # 计划、设计、安装说明和测试报告
 - PyAutoGUI 的 `write` 对非 ASCII/输入法文本支持有限；当前中文能力主要用于 OCR，不保证中文键盘输入。
 - 本地 Qwen 首次运行需要联网下载约 8.9 GB 权重；模型缓存不提交 Git，16 GB 显存的本机合成测试峰值分配约 9.0 GiB。
 - OpenAI-compatible 路径只有显式允许后才发送图片；截图像素可能含敏感信息，prompt 文本脱敏不能替代发送前人工检查。
-- 当前 Week 5 adapter 在固定小型评测上没有提高点击命中率，因此不作为默认运行配置；更复杂的失败恢复、结果验证和感知 benchmark 属于第 6 周。
+- 当前 Week 5 adapter 在固定小型评测上没有提高点击命中率，因此不作为默认运行配置。
+- Week 6 的自动鲁棒性验证使用固定合成帧和 fake 边界；真实应用、跨 DPI 显示器和不同窗口主题仍需操作者逐项 live 验证。
+- recovery 只允许每步有限重试和最多一次重规划；额度耗尽后会明确失败，不会无限循环。
 
 截图、标注、PDF、模型权重、缓存、日志及 `.env` 均由 `.gitignore` 排除。不要把包含个人信息的桌面图像提交到仓库。

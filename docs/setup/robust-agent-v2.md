@@ -35,6 +35,41 @@ uv run --no-sync gui-agent run `
 
 Week 5 实测 adapter 未超过基线，因此 Week 6 默认不加载 adapter。
 
+## 本地故障 Testbed
+
+Testbed 只读写 `artifacts/testbed`，不联网、不登录账号，也不会操作其他窗口。请在第一个 PowerShell 终端选择一种模式：
+
+```powershell
+# 第一次搜索显示“被忽略”，第二次搜索恢复
+uv run --no-sync python examples/gui_testbed.py --fault-profile transient
+
+# 搜索先显示 pending，750 ms 后出现最终结果
+uv run --no-sync python examples/gui_testbed.py --fault-profile delayed
+```
+
+保持 testbed 窗口可见，在第二个终端先运行不执行鼠标键盘的 delayed-search dry-run：
+
+```powershell
+uv run --no-sync gui-agent run `
+  --task-id delayed-search `
+  --provider qwen `
+  --ocr-profile balanced `
+  --max-steps 12 `
+  --max-retries-per-step 2 `
+  --max-replans 1 `
+  --run-dir artifacts/agent-runs/week6-delayed-search
+```
+
+dry-run 的目的只是检查模型建议、坐标和事件，界面不会真的变化，因此最终状态不一定成功。核对无误后，只有你自己显式追加 `--execute` 并对每个动作输入 `EXECUTE ACTION`，才会进行 live 操作。
+
+完全离线、无需打开窗口的 8 个自动故障场景可这样运行：
+
+```powershell
+uv run --no-sync pytest tests/integration/test_week6_robustness.py `
+  -m integration -v `
+  --basetemp artifacts/pytest-week6-integration
+```
+
 ## 输出说明
 
 - 最终兼容 JSON 写到 stdout。
@@ -51,6 +86,7 @@ Week 5 实测 adapter 未超过基线，因此 Week 6 默认不加载 adapter。
 - policy 拒绝、用户拒绝确认、非法动作和 planner 非法输出不重试。
 - 重试耗尽后最多重规划 1 次；之后受控失败。
 - `finish(success=True)` 只有在计划结束且已有验证证据时才会成功。
+- 配置任务的确定性成功条件应把必须出现的文字放在单引号中；“`'文字' is no longer visible`”表示该文字必须消失。没有可解析引用文本的成功条件不会被静默当作完成。
 
 ## OCR profile 与 benchmark
 

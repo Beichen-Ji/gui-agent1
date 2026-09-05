@@ -916,12 +916,14 @@ git commit -m "feat: stream sanitized GUI agent run events"
 
 **Files:**
 - Create: `configs/week6_robustness_tasks.json`
+- Modify: `configs/week4_tasks.json`
 - Create: `tests/integration/test_week6_robustness.py`
 - Modify: `examples/gui_testbed.py`
 - Create: `docs/test-reports/week6-robustness-report.md`
+- Modify: `docs/setup/robust-agent-v2.md`
 - Modify: `README.md`
 
-**Produces:** 系统 v2.0 的可重复故障场景和真实桌面人工测试记录。
+**Produces:** 系统 v2.0 的可重复故障场景、自动鲁棒性报告，以及待用户在场补录的真实桌面人工测试记录。
 
 固定场景不超过 8 个，以免提前进入 Week 7 的 20 项评估：
 
@@ -934,7 +936,7 @@ git commit -m "feat: stream sanitized GUI agent run events"
 7. 用户拒绝 live 确认，确认零 retry。
 8. retry/replan 全部耗尽，系统可控失败并写完整事件尾记录。
 
-- [ ] **Step 1: 先写 fake 集成 RED 测试**
+- [x] **Step 1: 先写 fake 集成 RED 测试**
 
 ```powershell
 uv run pytest tests/integration/test_week6_robustness.py -m integration -v
@@ -942,11 +944,11 @@ uv run pytest tests/integration/test_week6_robustness.py -m integration -v
 
 除真实桌面用例外，其余通过 fake observer/planner/executor 与虚拟 clock 确定性执行。
 
-- [ ] **Step 2: 扩展本地 Testbed 的故障注入**
+- [x] **Step 2: 扩展本地 Testbed 的故障注入**
 
 只增加本地、无网络、无账号的延迟更新/首次忽略动作模式；不能访问真实浏览器消息账号，也不能自动关闭无关窗口。
 
-- [ ] **Step 3: 先 dry-run，用户在场时再 live**
+- [x] **Step 3a: 先完成安全 dry-run**
 
 ```powershell
 uv run python examples/gui_testbed.py --fault-profile transient
@@ -955,11 +957,15 @@ uv run gui-agent run --task-id delayed-search --provider qwen --max-steps 12 --m
 
 核对动作和事件后，由用户显式添加 `--execute`；每个 live 动作仍输入 `EXECUTE ACTION`。
 
-- [ ] **Step 4: 写报告**
+- [ ] **Step 3b: 用户在场时完成 live 并补录人工测试结果**
+
+该步骤需要用户检查实时桌面并逐动作确认，不由自动化流程代替。Draft PR 可先创建，但在记录 live 结果前不把 Task 12 或 Week 6 标记为完全完成。
+
+- [x] **Step 4: 写报告**
 
 每个场景记录成功/失败、步骤数、retry 次数、replan 次数、恢复耗时、最终 reason code、OCR profile、模型/adapter revision 和人工干预次数。只汇总指标，不嵌入真实桌面截图或输入全文。
 
-- [ ] **Step 5: 全量验收**
+- [x] **Step 5: 全量验收**
 
 ```powershell
 uv lock --check
