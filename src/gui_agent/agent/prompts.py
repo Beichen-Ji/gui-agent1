@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from gui_agent.agent.types import AgentState, Observation
+from gui_agent.agent.types import AgentState, Observation, ReplanContext
 
 _ALLOWED_ACTIONS = ("click", "type_text", "hotkey", "scroll", "drag", "wait", "finish")
 _WINDOWS_PATH = re.compile(r"(?i)\b[a-z]:\\[^\s\"']+")
@@ -121,12 +121,23 @@ def build_action_prompt(
     profile: str | PromptProfile = "week4-baseline",
 ) -> str:
     selected = get_prompt_profile(profile)
-    active_step = (
-        state.decisions[-1].current_step_id if state.decisions else state.plan.steps[0].id
+    descriptions = {step.id: step.description for step in state.plan.steps}
+    completed_lines = "\n".join(
+        f"- {step.step_id}: {_safe_text(descriptions[step.step_id], max_length=500)}"
+        for step in state.progress.steps
+        if step.status == "completed"
     )
-    plan_lines = "\n".join(
-        f"- {step.id}: {_safe_text(step.description, max_length=500)}"
-        for step in state.plan.steps
+    if not completed_lines:
+        completed_lines = "- none"
+    active_progress = next(
+        step
+        for step in state.progress.steps
+        if step.step_id == state.progress.active_step_id
+    )
+    active_step = (
+        f"{active_progress.step_id}: "
+        f"{_safe_text(descriptions[active_progress.step_id], max_length=500)} "
+        f"(status={active_progress.status}, attempts={active_progress.attempts})"
     )
     if state.results:
         result_lines = "\n".join(
@@ -138,16 +149,61 @@ def build_action_prompt(
         )
     else:
         result_lines = "- none"
+    failure_line = (
+        f"{state.replan_context.reason_code}: "
+        f"{_safe_text(state.replan_context.summary, max_length=500)}"
+        if state.replan_context is not None
+        else "none"
+    )
     allowed = ", ".join(_ALLOWED_ACTIONS)
     return (
         f"{selected.action_instruction}\n"
         f"Prompt profile: {selected.id}.\n"
         f"Goal: {_safe_text(state.goal, max_length=1000)}\n"
+        f"Completed steps:\n{completed_lines}\n"
         f"Active step: {active_step}\n"
-        f"Plan:\n{plan_lines}\n"
+        f"Failure reason: {failure_line}\n"
         f"Recent results:\n{result_lines}\n"
         f"Allowed action kinds: {allowed}.\n"
         "Return a concise rationale summary, expected outcome, and one structured action.\n"
+        f"{_observation_summary(state.observation)}"
+    )
+
+
+def build_replan_prompt(
+    state: AgentState,
+    failure: ReplanContext,
+    *,
+    profile: str | PromptProfile = "week4-baseline",
+) -> str:
+    selected = get_prompt_profile(profile)
+    descriptions = {step.id: step.description for step in state.plan.steps}
+    completed = "\n".join(
+        f"- {step.step_id}: {_safe_text(descriptions[step.step_id], max_length=500)}"
+        for step in state.progress.steps
+        if step.status == "completed"
+    ) or "- none"
+    active = next(
+        step
+        for step in state.progress.steps
+        if step.step_id == state.progress.active_step_id
+    )
+    recent = "\n".join(
+        f"- {result.status}: {_safe_text(result.message, max_length=500)}"
+        for result in state.results[-3:]
+    ) or "- none"
+    return (
+        f"{selected.plan_instruction}\n"
+        "Revise only the unfinished portion of the plan. Never remove or rewrite completed "
+        "steps, and keep stable IDs for unchanged unfinished steps.\n"
+        f"Prompt profile: {selected.id}.\n"
+        f"Goal: {_safe_text(state.goal, max_length=1000)}\n"
+        f"Completed steps:\n{completed}\n"
+        f"Active step: {active.step_id}: "
+        f"{_safe_text(descriptions[active.step_id], max_length=500)}\n"
+        f"Failure reason: {failure.reason_code}: "
+        f"{_safe_text(failure.summary, max_length=500)}\n"
+        f"Recent results:\n{recent}\n"
         f"{_observation_summary(state.observation)}"
     )
 
@@ -157,5 +213,6 @@ __all__ = [
     "PromptProfile",
     "build_action_prompt",
     "build_plan_prompt",
+    "build_replan_prompt",
     "get_prompt_profile",
 ]

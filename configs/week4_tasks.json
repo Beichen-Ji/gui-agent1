@@ -4,7 +4,7 @@
     {
       "id": "open-browser",
       "instruction": "Open the Browser area in the local Week 4 testbed.",
-      "success_criteria": "The Browser area is visible and marked open.",
+      "success_criteria": "The Browser area displays 'local deterministic search'.",
       "actions": [
         {"kind": "click", "x": 110, "y": 95},
         {"kind": "finish", "success": true, "summary": "Browser area opened"}
@@ -21,9 +21,21 @@
       ]
     },
     {
+      "id": "delayed-search",
+      "instruction": "Search for 'week6 delayed' in the local testbed Browser area and wait for the delayed result.",
+      "success_criteria": "The result area displays 'Search result: week6 delayed'.",
+      "actions": [
+        {"kind": "click", "x": 240, "y": 215},
+        {"kind": "type_text", "text": "week6 delayed"},
+        {"kind": "click", "x": 550, "y": 215},
+        {"kind": "wait", "seconds": 0.75},
+        {"kind": "finish", "success": true, "summary": "Delayed local search completed"}
+      ]
+    },
+    {
       "id": "open-file",
       "instruction": "Open week4-demo.txt from the local testbed Files area.",
-      "success_criteria": "The Files area displays week4-demo.txt and WEEK4_DEMO_READY.",
+      "success_criteria": "The Files area displays 'week4-demo.txt' and 'WEEK4_DEMO_READY'.",
       "actions": [
         {"kind": "click", "x": 370, "y": 95},
         {"kind": "finish", "success": true, "summary": "Local demo file opened"}
@@ -43,7 +55,7 @@
     {
       "id": "close-app",
       "instruction": "Close only the local Week 4 testbed application.",
-      "success_criteria": "The testbed window exits and unrelated applications remain open.",
+      "success_criteria": "The text 'Local GUI Agent Testbed' is no longer visible.",
       "actions": [
         {"kind": "hotkey", "keys": ["alt", "f4"]},
         {"kind": "finish", "success": true, "summary": "Local testbed closed"}

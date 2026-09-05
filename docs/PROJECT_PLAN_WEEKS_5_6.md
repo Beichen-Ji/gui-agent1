@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: 使用 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans` 按 Task 顺序执行；每个功能先使用 `superpowers:test-driven-development`，提交或创建 PR 前使用 `superpowers:verification-before-completion`。
 
-**状态：** 用户已批准，正在执行第 5 周；进度以本文复选框和 Git 提交为准。
+**状态：** Week 6 自动开发与验收已推送 Draft PR；真实桌面 live 记录等待用户在场完成。进度以本文复选框和 Git 提交为准。
 
 **任务分类：** 架构级扩展。第 5 周会新增训练与评估子系统，第 6 周会调整 Agent 循环、感知和日志边界，因此分成两个独立分支与 PR，不能在 Week 4 的未完成分支上直接叠加。
 
@@ -643,14 +643,14 @@ gh pr create --draft --base master --head codex/week5-lora-improvement `
 
 ## Task 7: 合并 Week 5 后创建 Week 6 worktree
 
-- [ ] **Step 1: 用户审阅并合并 Week 5 PR**
+- [x] **Step 1: 用户审阅并合并 Week 5 PR**
 
 ```powershell
 gh pr view --json state,isDraft,mergeCommit,url
 git fetch --prune origin
 ```
 
-- [ ] **Step 2: 创建分支并跑基线**
+- [x] **Step 2: 创建分支并跑基线**
 
 ```powershell
 $mainRepo = Split-Path -Parent (git rev-parse --path-format=absolute --git-common-dir)
@@ -700,7 +700,7 @@ class MultimodalPlanner(Protocol):
     def revise_plan(self, state: AgentState, failure: ReplanContext) -> TaskPlan: ...
 ```
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 覆盖稳定 step ID、只允许计划内 step、完成后前进、不可重复完成、重规划保留已完成事实、最多 20 步、最多一次 replan 和 fake planner 的确定性行为。
 
@@ -708,11 +708,11 @@ class MultimodalPlanner(Protocol):
 uv run pytest tests/test_agent_progress.py tests/test_agent_loop.py tests/test_agent_planner.py -v
 ```
 
-- [ ] **Step 2: 最小实现**
+- [x] **Step 2: 最小实现**
 
 `AgentState` 增加不可变 `progress`；prompt 只发送已完成步骤、当前步骤、失败 reason code 和最近三个结果。模型不能把已经完成的动作重新标成未完成。
 
-- [ ] **Step 3: GREEN 与提交**
+- [x] **Step 3: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_agent_progress.py tests/test_agent_loop.py tests/test_agent_planner.py -v
@@ -763,7 +763,7 @@ class GUIAgent:
 
 固定 reason code：`execution_error`、`observation_error`、`no_visual_change`、`expected_text_missing`、`planner_output_invalid`、`policy_denied`、`confirmation_rejected`、`repeated_action`、`retry_exhausted`。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 测试：首次执行异常后成功；界面无变化后 planner 提供不同动作；完全相同动作不重放；policy/confirmation 永不 retry；retry 精确停止于上限；退避为注入 clock，不在普通测试真实 sleep；retry 耗尽后只 replan 一次。
 
@@ -771,15 +771,15 @@ class GUIAgent:
 uv run pytest tests/test_agent_verification.py tests/test_agent_retry.py tests/test_agent_loop.py -v
 ```
 
-- [ ] **Step 2: 实现规则验证器**
+- [x] **Step 2: 实现规则验证器**
 
 先比较截图尺寸/origin、帧 fingerprint、OCR 文本集合变化和 executor 状态。CLI 的 `TaskDefinition.success_criteria` 必须传入 `GUIAgent.run()`；自然语言 `--task` 没有显式 criteria 时保持 `None`。`finish(success=True)` 只有在计划完成且已有验证证据时才能结束。模型语义验证是可选补充，不能覆盖确定性的 policy/execution 失败。
 
-- [ ] **Step 3: 实现 retry 安全不变量**
+- [x] **Step 3: 实现 retry 安全不变量**
 
 默认 `max_retries_per_step=2`、backoff `0.5s, 1.0s`；每次 retry 前重新观察、重新规划、重新 policy 校验并在 live 模式重新确认。禁止直接重放上一动作。
 
-- [ ] **Step 4: GREEN 与提交**
+- [x] **Step 4: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_agent_verification.py tests/test_agent_retry.py tests/test_agent_loop.py tests/test_agent_cli.py -v
@@ -804,7 +804,7 @@ git commit -m "feat: add bounded GUI action recovery"
 
 **Produces:** `fast`、`balanced`、`accurate` 三个明确 profile；固定合成 UI benchmark；完全相同帧的安全 OCR cache。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 覆盖 BGR/灰度输入、CLAHE/缩放坐标还原、profile 参数校验、文本标准化、box IoU 匹配、precision/recall/F1、median/p95 延迟、相同帧 cache hit、任一像素/origin/profile 变化 cache miss。
 
@@ -812,7 +812,7 @@ git commit -m "feat: add bounded GUI action recovery"
 uv run pytest tests/test_perception_preprocessing.py tests/test_perception_benchmark.py tests/test_ocr.py tests/test_agent_observation.py -v
 ```
 
-- [ ] **Step 2: 扩展 OCR 参数而不泄漏 EasyOCR 实现**
+- [x] **Step 2: 扩展 OCR 参数而不泄漏 EasyOCR 实现**
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -830,7 +830,7 @@ class OCRProfile:
 
 `OCRReader` protocol 和 `EasyOCRBackend` 透传受控白名单参数；禁止任意 `**kwargs` 从 CLI 进入 EasyOCR。
 
-- [ ] **Step 3: 建立基线再选择默认 profile**
+- [x] **Step 3: 建立基线再选择默认 profile**
 
 ```powershell
 $env:EASYOCR_MODULE_PATH = Join-Path $PWD "models\easyocr"
@@ -843,7 +843,7 @@ uv run python scripts/benchmark_ocr.py `
 
 默认 profile 必须满足：冷帧文字 F1 不低于 Week 4 baseline；冷帧 median latency 不恶化超过 10%；相同帧重复观察 p50 延迟至少下降 50%。若某 profile 不满足，不设为默认，只在报告中保留结果。
 
-- [ ] **Step 4: GREEN 与提交**
+- [x] **Step 4: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_perception_preprocessing.py tests/test_perception_benchmark.py tests/test_ocr.py tests/test_agent_observation.py -v
@@ -876,7 +876,7 @@ class CompositeEventSink:
 
 事件至少包括：`run_started`、`plan_created`、`step_started`、`observation_completed`、`action_proposed`、`action_authorized`、`action_executed`、`verification_completed`、`retry_scheduled`、`plan_revised`、`run_finished`。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 测试稳定递增 sequence、UTC 时间、run ID 注入、JSONL 一行一事件、异常仍写 `run_finished`、sink 失败不导致重复桌面动作、typed text 只记录长度、goal 只记录 SHA-256、OCR 只记录数量/摘要哈希。
 
@@ -884,7 +884,7 @@ class CompositeEventSink:
 uv run pytest tests/test_agent_events.py tests/test_agent_cli.py -v
 ```
 
-- [ ] **Step 2: 实现 CLI**
+- [x] **Step 2: 实现 CLI**
 
 新增：`--max-retries-per-step`、`--max-replans`、`--ocr-profile`、`--run-dir`、`--log-level`；沿用 Week 5 已增加的 `--adapter` 和 `--prompt-profile`。现有 `--trace-dir` 在 v0.6 中保留为 `--run-dir` 的 deprecated alias，两者不能同时出现。`--execute` 和逐动作确认语义不变。
 
@@ -903,7 +903,7 @@ uv run gui-agent run `
   --run-dir artifacts/agent-runs/week6-search
 ```
 
-- [ ] **Step 3: GREEN 与提交**
+- [x] **Step 3: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_agent_events.py tests/test_agent_cli.py tests/test_agent_loop.py -v
@@ -916,12 +916,14 @@ git commit -m "feat: stream sanitized GUI agent run events"
 
 **Files:**
 - Create: `configs/week6_robustness_tasks.json`
+- Modify: `configs/week4_tasks.json`
 - Create: `tests/integration/test_week6_robustness.py`
 - Modify: `examples/gui_testbed.py`
 - Create: `docs/test-reports/week6-robustness-report.md`
+- Modify: `docs/setup/robust-agent-v2.md`
 - Modify: `README.md`
 
-**Produces:** 系统 v2.0 的可重复故障场景和真实桌面人工测试记录。
+**Produces:** 系统 v2.0 的可重复故障场景、自动鲁棒性报告，以及待用户在场补录的真实桌面人工测试记录。
 
 固定场景不超过 8 个，以免提前进入 Week 7 的 20 项评估：
 
@@ -934,7 +936,7 @@ git commit -m "feat: stream sanitized GUI agent run events"
 7. 用户拒绝 live 确认，确认零 retry。
 8. retry/replan 全部耗尽，系统可控失败并写完整事件尾记录。
 
-- [ ] **Step 1: 先写 fake 集成 RED 测试**
+- [x] **Step 1: 先写 fake 集成 RED 测试**
 
 ```powershell
 uv run pytest tests/integration/test_week6_robustness.py -m integration -v
@@ -942,11 +944,11 @@ uv run pytest tests/integration/test_week6_robustness.py -m integration -v
 
 除真实桌面用例外，其余通过 fake observer/planner/executor 与虚拟 clock 确定性执行。
 
-- [ ] **Step 2: 扩展本地 Testbed 的故障注入**
+- [x] **Step 2: 扩展本地 Testbed 的故障注入**
 
 只增加本地、无网络、无账号的延迟更新/首次忽略动作模式；不能访问真实浏览器消息账号，也不能自动关闭无关窗口。
 
-- [ ] **Step 3: 先 dry-run，用户在场时再 live**
+- [x] **Step 3a: 先完成安全 dry-run**
 
 ```powershell
 uv run python examples/gui_testbed.py --fault-profile transient
@@ -955,11 +957,15 @@ uv run gui-agent run --task-id delayed-search --provider qwen --max-steps 12 --m
 
 核对动作和事件后，由用户显式添加 `--execute`；每个 live 动作仍输入 `EXECUTE ACTION`。
 
-- [ ] **Step 4: 写报告**
+- [ ] **Step 3b: 用户在场时完成 live 并补录人工测试结果**
+
+该步骤需要用户检查实时桌面并逐动作确认，不由自动化流程代替。Draft PR 可先创建，但在记录 live 结果前不把 Task 12 或 Week 6 标记为完全完成。
+
+- [x] **Step 4: 写报告**
 
 每个场景记录成功/失败、步骤数、retry 次数、replan 次数、恢复耗时、最终 reason code、OCR profile、模型/adapter revision 和人工干预次数。只汇总指标，不嵌入真实桌面截图或输入全文。
 
-- [ ] **Step 5: 全量验收**
+- [x] **Step 5: 全量验收**
 
 ```powershell
 uv lock --check
@@ -974,7 +980,7 @@ git ls-files data artifacts models checkpoints .env
 
 Week 6 验收标准：复杂任务按显式 progress 分步推进；可恢复错误能在限制内恢复；不可恢复/安全错误不 retry；不会重复执行完全相同动作；感知 benchmark 有基线和选择依据；每次 run 都有实时状态和完整脱敏事件；普通测试不访问真实桌面/网络/模型。
 
-- [ ] **Step 6: 推送 Draft PR**
+- [x] **Step 6: 推送 Draft PR**
 
 ```powershell
 git add configs/week6_robustness_tasks.json tests/integration/test_week6_robustness.py examples/gui_testbed.py docs/test-reports/week6-robustness-report.md README.md
@@ -983,6 +989,8 @@ git push -u origin codex/week6-robust-agent-v2
 gh pr create --draft --base master --head codex/week6-robust-agent-v2 `
   --title "feat: deliver robust Week 6 GUI agent v2"
 ```
+
+执行记录（2026-09-05）：404 项普通测试通过、10 项 integration deselected、覆盖率 87%；8 项固定故障注入测试通过；锁文件、Ruff、mypy（89 个 source files）和 diff 检查通过。代码与报告已推送至 Draft PR [#6](https://github.com/Beichen-Ji/gui-agent1/pull/6)。Task 12 Step 3b 的真实桌面 live 记录仍待用户在场完成，不计为当前自动验收通过。
 
 CI 与人工审阅通过并合并后，再创建 `v0.6.0-week6` 标签。adapter 若需发布为 Release 附件，必须先核对 SHA-256、基础模型许可、数据许可和文件大小，并单独获得用户确认。
 

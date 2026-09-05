@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 from collections.abc import Callable
@@ -19,10 +20,16 @@ from gui_agent.types import ScreenRegion
 class RuntimeProbe:
     def __init__(self, result: AgentRunResult) -> None:
         self.result = result
-        self.calls: list[tuple[str, int]] = []
+        self.calls: list[tuple[str, str | None, int]] = []
 
-    def run(self, goal: str, *, max_steps: int = 10) -> AgentRunResult:
-        self.calls.append((goal, max_steps))
+    def run(
+        self,
+        goal: str,
+        *,
+        success_criteria: str | None = None,
+        max_steps: int = 10,
+    ) -> AgentRunResult:
+        self.calls.append((goal, success_criteria, max_steps))
         return self.result
 
 
@@ -67,6 +74,12 @@ def test_cli_help_lists_commands_and_run_safety_options(
             "--execute",
             "--allow-remote-image",
             "--trace-dir",
+            "--run-dir",
+            "--max-retries-per-step",
+            "--max-replans",
+            "--ocr-profile",
+            "--prompt-profile",
+            "--log-level",
         ):
             assert option in output
 
@@ -101,6 +114,8 @@ def test_delegated_help_works_outside_repository_directory(
         ["run", "--task", "Open Browser", "--provider", "invalid"],
         ["run", "--task", "Open Browser", "--max-steps", "0"],
         ["run", "--task", "Open Browser", "--monitor", "0"],
+        ["run", "--task", "Open Browser", "--max-retries-per-step", "3"],
+        ["run", "--task", "Open Browser", "--max-replans", "2"],
     ],
 )
 def test_cli_rejects_missing_task_invalid_provider_and_non_positive_limits(
@@ -142,7 +157,31 @@ def test_cli_defaults_to_dry_run_and_passes_validated_runtime_options() -> None:
     assert configs[0].provider == "fake"
     assert configs[0].monitor == 1
     assert configs[0].region is None
-    assert runner.calls == [("Open Browser", 4)]
+    assert configs[0].max_retries_per_step == 2
+    assert configs[0].max_replans == 1
+    assert configs[0].ocr_profile == "balanced"
+    assert configs[0].prompt_profile is None
+    assert configs[0].log_level == "INFO"
+    assert runner.calls == [("Open Browser", None, 4)]
+
+
+def test_cli_passes_configured_success_criteria_but_not_for_free_text() -> None:
+    task_runner = RuntimeProbe(run_result())
+    free_runner = RuntimeProbe(run_result())
+
+    assert cli.main(
+        ["run", "--task-id", "open-browser", "--provider", "fake"],
+        runtime_factory=lambda _config, _input: task_runner,
+    ) == 0
+    assert cli.main(
+        ["run", "--task", "Open Browser", "--provider", "fake"],
+        runtime_factory=lambda _config, _input: free_runner,
+    ) == 0
+
+    assert task_runner.calls[0][1] == (
+        "The Browser area displays 'local deterministic search'."
+    )
+    assert free_runner.calls[0][1] is None
 
 
 @pytest.mark.parametrize(
@@ -281,17 +320,20 @@ def test_fake_execute_path_denies_wrong_confirmation_without_desktop_input(
     assert '"failure_stage": "policy"' in output
 
 
-def test_cli_loads_exactly_the_five_week4_task_ids() -> None:
+def test_cli_loads_the_bundled_local_testbed_task_ids() -> None:
     tasks = cli.load_task_definitions(cli.DEFAULT_TASKS_PATH)
 
     assert set(tasks) == {
         "open-browser",
         "search-content",
+        "delayed-search",
         "open-file",
         "send-message",
         "close-app",
     }
     assert all(task.actions for task in tasks.values())
+    assert all("'" in task.success_criteria for task in tasks.values())
+    assert "Search result: week6 delayed" in tasks["delayed-search"].success_criteria
 
 
 def test_cli_trace_redacts_typed_text_and_writes_only_when_requested(
@@ -337,6 +379,91 @@ def test_cli_trace_redacts_typed_text_and_writes_only_when_requested(
     assert exit_code == 0
     assert secret not in trace
     assert '"action_kinds": [\n    "type_text"' in trace
+
+
+def test_cli_run_dir_and_deprecated_trace_dir_are_mutually_exclusive(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(SystemExit) as captured:
+        cli.main(
+            [
+                "run",
+                "--task",
+                "Open Browser",
+                "--run-dir",
+                str(tmp_path / "run"),
+                "--trace-dir",
+                str(tmp_path / "trace"),
+            ]
+        )
+
+    assert captured.value.code == 2
+
+
+def test_cli_accepts_explicit_v2_runtime_options() -> None:
+    configs: list[cli.RunConfig] = []
+    runner = RuntimeProbe(run_result())
+
+    def capture_config(
+        config: cli.RunConfig,
+        _input_fn: Callable[[str], str],
+    ) -> RuntimeProbe:
+        configs.append(config)
+        return runner
+
+    exit_code = cli.main(
+        [
+            "run",
+            "--task",
+            "Open Browser",
+            "--provider",
+            "qwen",
+            "--max-retries-per-step",
+            "1",
+            "--max-replans",
+            "0",
+            "--ocr-profile",
+            "accurate",
+            "--prompt-profile",
+            "week5-grounded",
+            "--log-level",
+            "DEBUG",
+        ],
+        runtime_factory=capture_config,
+    )
+
+    assert exit_code == 0
+    assert configs[0].max_retries_per_step == 1
+    assert configs[0].max_replans == 0
+    assert configs[0].ocr_profile == "accurate"
+    assert configs[0].prompt_profile == "week5-grounded"
+    assert configs[0].log_level == "DEBUG"
+
+
+def test_cli_run_dir_writes_events_and_summary_while_final_json_stays_on_stdout(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run_dir = tmp_path / "agent-run"
+
+    exit_code = cli.main(
+        [
+            "run",
+            "--task",
+            "Open Browser",
+            "--provider",
+            "fake",
+            "--run-dir",
+            str(run_dir),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert json.loads(captured.out)["status"] == "succeeded"
+    assert "run_started" in captured.err
+    assert (run_dir / "events.jsonl").is_file()
+    assert (run_dir / "run-summary.json").is_file()
 
 
 def test_agent_demo_forwards_arguments_to_run_subcommand(
@@ -389,3 +516,38 @@ def test_testbed_rejects_file_traversal_and_tracks_its_own_close_state(
 
     state.close()
     assert state.snapshot()["closed"] is True
+
+
+def test_testbed_transient_profile_ignores_only_the_first_search(tmp_path: Path) -> None:
+    state = gui_testbed.TestbedState(
+        tmp_path / "testbed",
+        fault_profile="transient",
+    )
+
+    first = state.search("week6 recovery")
+    second = state.search("week6 recovery")
+
+    assert first == "Search result: transient action ignored"
+    assert second == "Search result: week6 recovery"
+    assert state.snapshot()["faults_triggered"] == 1
+
+
+def test_testbed_delayed_profile_exposes_an_explicit_completion_hook(
+    tmp_path: Path,
+) -> None:
+    state = gui_testbed.TestbedState(
+        tmp_path / "testbed",
+        fault_profile="delayed",
+    )
+
+    assert state.search("week6 delayed") == "Search result: pending"
+    assert state.snapshot()["search_result"] == "Search result: pending"
+    assert state.complete_delayed_search() == "Search result: week6 delayed"
+
+
+def test_testbed_rejects_unknown_fault_profile(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="fault profile"):
+        gui_testbed.TestbedState(
+            tmp_path / "testbed",
+            fault_profile="unsafe",  # type: ignore[arg-type]
+        )

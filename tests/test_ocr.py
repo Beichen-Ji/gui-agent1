@@ -14,6 +14,7 @@ from gui_agent.perception.ocr import (
     OCRInferenceError,
     OCRInitializationError,
 )
+from gui_agent.perception.preprocessing import OCR_PROFILES
 from gui_agent.types import BoundingBox, ImageArray, OCRDetection, Point
 
 
@@ -27,6 +28,7 @@ class FakeReader:
         self.results = list(results)
         self.error = error
         self.calls: list[tuple[ImageArray, int, bool]] = []
+        self.options: list[dict[str, object]] = []
 
     def readtext(
         self,
@@ -34,8 +36,28 @@ class FakeReader:
         *,
         detail: int,
         paragraph: bool,
+        decoder: str,
+        beamWidth: int,
+        batch_size: int,
+        workers: int,
+        canvas_size: int,
+        mag_ratio: float,
+        contrast_ths: float,
+        adjust_contrast: float,
     ) -> Sequence[object]:
         self.calls.append((image, detail, paragraph))
+        self.options.append(
+            {
+                "decoder": decoder,
+                "beamWidth": beamWidth,
+                "batch_size": batch_size,
+                "workers": workers,
+                "canvas_size": canvas_size,
+                "mag_ratio": mag_ratio,
+                "contrast_ths": contrast_ths,
+                "adjust_contrast": adjust_contrast,
+            }
+        )
         if self.error is not None:
             raise self.error
         return list(self.results)
@@ -99,7 +121,7 @@ def test_easyocr_normalizes_filters_and_offsets_results() -> None:
         ([[20, 20], [25, 20], [25, 25], [20, 25]], "low", 0.2),
     ]
     factory = ReaderFactoryProbe(FakeReader(raw))
-    backend = EasyOCRBackend(reader_factory=factory, gpu=False)
+    backend = EasyOCRBackend(reader_factory=factory, gpu=False, profile="fast")
 
     result = backend.recognize(
         color_image(),
@@ -119,6 +141,7 @@ def test_easyocr_skips_blank_text_without_losing_valid_detections() -> None:
     backend = EasyOCRBackend(
         reader_factory=ReaderFactoryProbe(FakeReader(raw)),
         gpu=False,
+        profile="fast",
     )
 
     assert backend.recognize(color_image()) == [
@@ -129,7 +152,7 @@ def test_easyocr_skips_blank_text_without_losing_valid_detections() -> None:
 def test_easyocr_creates_reader_once_and_passes_complete_call_shape() -> None:
     reader = FakeReader()
     factory = ReaderFactoryProbe(reader)
-    backend = EasyOCRBackend(reader_factory=factory, gpu=False)
+    backend = EasyOCRBackend(reader_factory=factory, gpu=False, profile="fast")
     image = color_image()
 
     assert backend.recognize(image) == []
@@ -137,6 +160,44 @@ def test_easyocr_creates_reader_once_and_passes_complete_call_shape() -> None:
 
     assert factory.calls == [(["ch_sim", "en"], False)]
     assert reader.calls == [(image, 1, False), (image, 1, False)]
+
+
+def test_easyocr_passes_only_profile_options_and_restores_scaled_coordinates() -> None:
+    raw = [([[15, 15], [45, 15], [45, 30], [15, 30]], "Save", 0.9)]
+    reader = FakeReader(raw)
+    backend = EasyOCRBackend(
+        reader_factory=ReaderFactoryProbe(reader),
+        gpu=False,
+        profile="accurate",
+    )
+
+    detected = backend.recognize(color_image(), origin=Point(100, 50))
+
+    assert reader.calls[0][0].shape == (45, 60)
+    assert reader.options == [
+        {
+            "decoder": OCR_PROFILES["accurate"].decoder,
+            "beamWidth": OCR_PROFILES["accurate"].beam_width,
+            "batch_size": OCR_PROFILES["accurate"].batch_size,
+            "workers": OCR_PROFILES["accurate"].workers,
+            "canvas_size": OCR_PROFILES["accurate"].canvas_size,
+            "mag_ratio": 1.0,
+            "contrast_ths": OCR_PROFILES["accurate"].contrast_threshold,
+            "adjust_contrast": OCR_PROFILES["accurate"].adjust_contrast,
+        }
+    ]
+    assert detected == [
+        OCRDetection("Save", 0.9, BoundingBox(110, 60, 130, 70))
+    ]
+
+
+def test_easyocr_rejects_unknown_profile_name() -> None:
+    with pytest.raises(ValueError, match="profile"):
+        EasyOCRBackend(
+            reader_factory=ReaderFactoryProbe(),
+            gpu=False,
+            profile="turbo",
+        )
 
 
 def test_easyocr_accepts_grayscale_image() -> None:

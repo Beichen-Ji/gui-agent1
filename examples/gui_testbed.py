@@ -1,17 +1,23 @@
+import argparse
 import tkinter as tk
+from collections.abc import Sequence
 from pathlib import Path
 from tkinter import ttk
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 DEFAULT_TESTBED_ROOT = Path(__file__).resolve().parents[1] / "artifacts" / "testbed"
 DEMO_FILENAME = "week4-demo.txt"
 DEMO_CONTENT = "WEEK4_DEMO_READY\nThis file belongs to the local Week 4 GUI testbed.\n"
+FaultProfile = Literal["none", "transient", "delayed"]
+FAULT_PROFILES: tuple[FaultProfile, ...] = ("none", "transient", "delayed")
 
 
 class TestbedState:
     """Pure local state for the Browser, Files, and Messages test areas."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, *, fault_profile: FaultProfile = "none") -> None:
+        if fault_profile not in FAULT_PROFILES:
+            raise ValueError(f"unknown fault profile: {fault_profile}")
         self.root = root.resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         demo = self.root / DEMO_FILENAME
@@ -24,6 +30,9 @@ class TestbedState:
         self.file_content: str | None = None
         self.messages: list[str] = []
         self.closed = False
+        self.fault_profile = fault_profile
+        self.faults_triggered = 0
+        self._transient_search_ignored = False
 
     def open_browser(self) -> None:
         self.browser_open = True
@@ -34,7 +43,22 @@ class TestbedState:
             raise ValueError("search query must contain 1 to 200 characters")
         self.open_browser()
         self.search_query = normalized
+        if self.fault_profile == "transient" and not self._transient_search_ignored:
+            self._transient_search_ignored = True
+            self.faults_triggered += 1
+            self.search_result = "Search result: transient action ignored"
+            return self.search_result
+        if self.fault_profile == "delayed":
+            self.faults_triggered += 1
+            self.search_result = "Search result: pending"
+            return self.search_result
         self.search_result = f"Search result: {normalized}"
+        return self.search_result
+
+    def complete_delayed_search(self) -> str:
+        if self.fault_profile != "delayed" or self.search_query is None:
+            raise ValueError("no delayed search is pending")
+        self.search_result = f"Search result: {self.search_query}"
         return self.search_result
 
     def open_file(self, filename: str) -> str:
@@ -65,6 +89,8 @@ class TestbedState:
             "file_content": self.file_content,
             "messages": tuple(self.messages),
             "closed": self.closed,
+            "fault_profile": self.fault_profile,
+            "faults_triggered": self.faults_triggered,
         }
 
 
@@ -72,7 +98,7 @@ class TestbedApp:
     def __init__(self, root: tk.Tk, state: TestbedState) -> None:
         self._root = root
         self._state = state
-        root.title("GUI Agent Week 4 Testbed")
+        root.title("GUI Agent Week 6 Testbed")
         root.geometry("760x520")
         root.minsize(680, 460)
 
@@ -173,6 +199,16 @@ class TestbedApp:
             result = f"Error: {error}"
         self._search_output.configure(text=result)
         self._refresh_status()
+        if result == "Search result: pending":
+            self._root.after(750, self._finish_delayed_search)
+
+    def _finish_delayed_search(self) -> None:
+        try:
+            result = self._state.complete_delayed_search()
+        except ValueError:
+            return
+        self._search_output.configure(text=result)
+        self._refresh_status()
 
     def _open_file(self) -> None:
         try:
@@ -201,7 +237,9 @@ class TestbedApp:
                 f"STATUS browser_open={snapshot['browser_open']} "
                 f"search={snapshot['search_query']!r} "
                 f"file={snapshot['opened_file']!r} "
-                f"messages={len(self._state.messages)}"
+                f"messages={len(self._state.messages)} "
+                f"fault={snapshot['fault_profile']!r} "
+                f"faults_triggered={snapshot['faults_triggered']}"
             )
         )
 
@@ -210,9 +248,21 @@ class TestbedApp:
         self._root.destroy()
 
 
-def main() -> int:
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Run the local GUI agent testbed.")
+    parser.add_argument(
+        "--fault-profile",
+        choices=FAULT_PROFILES,
+        default="none",
+        help="Inject a safe local search fault for Week 6 recovery testing.",
+    )
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
     root = tk.Tk()
-    TestbedApp(root, TestbedState(DEFAULT_TESTBED_ROOT))
+    TestbedApp(root, TestbedState(DEFAULT_TESTBED_ROOT, fault_profile=args.fault_profile))
     root.mainloop()
     return 0
 
