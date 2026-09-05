@@ -1,3 +1,10 @@
+from gui_agent.agent.events import (
+    AgentEvent,
+    CompositeEventSink,
+    ConsoleEventSink,
+    EventSink,
+    JSONLEventSink,
+)
 from gui_agent.agent.planner import (
     FakePlanner,
     LangChainPlanner,
@@ -39,14 +46,19 @@ from gui_agent.agent.verification import (
 __all__ = [
     "AgentAction",
     "AgentDecision",
+    "AgentEvent",
     "AgentState",
     "ClickAction",
+    "CompositeEventSink",
+    "ConsoleEventSink",
     "DEFAULT_QWEN_MODEL",
     "DragAction",
     "FakePlanner",
     "FailureReason",
     "FinishAction",
     "HotkeyAction",
+    "EventSink",
+    "JSONLEventSink",
     "LangChainPlanner",
     "MultimodalPlanner",
     "Observation",

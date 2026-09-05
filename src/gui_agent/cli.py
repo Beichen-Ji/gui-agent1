@@ -10,12 +10,20 @@ from typing import Literal, Protocol, TypeAlias, cast
 import numpy as np
 from pydantic import TypeAdapter, ValidationError
 
+from gui_agent.agent.events import (
+    CompositeEventSink,
+    ConsoleEventSink,
+    EventSink,
+    JSONLEventSink,
+)
 from gui_agent.agent.executor import ActionExecutor
 from gui_agent.agent.loop import AgentRunResult, GUIAgent, ObservationSource
 from gui_agent.agent.observation import ObservationBuilder
 from gui_agent.agent.planner import FakePlanner, LangChainPlanner, MultimodalPlanner
 from gui_agent.agent.policy import SafetyPolicy
+from gui_agent.agent.prompts import PROMPT_PROFILES
 from gui_agent.agent.qwen import DEFAULT_QWEN_MODEL, QwenTransformersPlanner
+from gui_agent.agent.retry import RetryPolicy
 from gui_agent.agent.types import (
     AgentAction,
     AgentDecision,
@@ -28,6 +36,7 @@ from gui_agent.agent.types import (
 from gui_agent.control.controller import DesktopController
 from gui_agent.perception.capture import ScreenCapture
 from gui_agent.perception.ocr import EasyOCRBackend
+from gui_agent.perception.preprocessing import DEFAULT_OCR_PROFILE, OCR_PROFILES
 from gui_agent.types import BoundingBox, OCRDetection, Point, ScreenRegion, ScreenshotResult
 
 Provider: TypeAlias = Literal["fake", "qwen", "openai-compatible"]
@@ -54,10 +63,15 @@ class RunConfig:
     monitor: int | None
     region: ScreenRegion | None
     max_steps: int
+    max_retries_per_step: int
+    max_replans: int
     execute: bool
     allow_remote_image: bool
-    trace_dir: Path | None
+    run_dir: Path | None
     adapter_path: Path | None
+    prompt_profile: str | None
+    ocr_profile: str
+    log_level: str
     api_base: str | None = None
     api_key: str | None = field(default=None, repr=False)
     fake_actions: tuple[AgentAction, ...] = ()
@@ -83,6 +97,20 @@ def _positive_integer(value: str) -> int:
         raise argparse.ArgumentTypeError("must be a positive integer") from error
     if converted < 1:
         raise argparse.ArgumentTypeError("must be a positive integer")
+    return converted
+
+
+def _retry_limit(value: str) -> int:
+    converted = int(value)
+    if not 0 <= converted <= 2:
+        raise argparse.ArgumentTypeError("must be between 0 and 2")
+    return converted
+
+
+def _replan_limit(value: str) -> int:
+    converted = int(value)
+    if converted not in {0, 1}:
+        raise argparse.ArgumentTypeError("must be 0 or 1")
     return converted
 
 
@@ -188,9 +216,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="absolute virtual-desktop capture region",
     )
     run.add_argument("--max-steps", type=_positive_integer, default=10)
+    run.add_argument("--max-retries-per-step", type=_retry_limit, default=2)
+    run.add_argument("--max-replans", type=_replan_limit, default=1)
     run.add_argument("--execute", action="store_true")
     run.add_argument("--allow-remote-image", action="store_true")
-    run.add_argument("--trace-dir", type=Path)
+    run_dir = run.add_mutually_exclusive_group()
+    run_dir.add_argument("--run-dir", type=Path)
+    run_dir.add_argument(
+        "--trace-dir",
+        type=Path,
+        help="deprecated alias for --run-dir",
+    )
+    run.add_argument(
+        "--ocr-profile",
+        choices=tuple(OCR_PROFILES),
+        default=DEFAULT_OCR_PROFILE,
+    )
+    run.add_argument("--prompt-profile", choices=tuple(PROMPT_PROFILES))
+    run.add_argument(
+        "--log-level",
+        choices=("DEBUG", "INFO", "WARNING", "ERROR"),
+        default="INFO",
+    )
     run.add_argument(
         "--adapter",
         type=Path,
@@ -274,7 +321,7 @@ def build_runtime(config: RunConfig, input_fn: InputFunction) -> GUIAgent:
         capture = ScreenCapture()
         observer = ObservationBuilder(
             capture,
-            EasyOCRBackend(),
+            EasyOCRBackend(profile=config.ocr_profile),
             monitor_index=config.monitor,
             region=config.region,
             min_confidence=0.5,
@@ -283,6 +330,7 @@ def build_runtime(config: RunConfig, input_fn: InputFunction) -> GUIAgent:
             planner = QwenTransformersPlanner(
                 model_name=config.model,
                 adapter_path=config.adapter_path,
+                prompt_profile=config.prompt_profile,
             )
         else:
             planner = LangChainPlanner(
@@ -299,11 +347,19 @@ def build_runtime(config: RunConfig, input_fn: InputFunction) -> GUIAgent:
             dry_run=not config.execute,
             bounds_provider=bounds_provider,
         )
+    sinks: list[EventSink] = [ConsoleEventSink(log_level=config.log_level)]
+    if config.run_dir is not None:
+        sinks.append(JSONLEventSink(config.run_dir / "events.jsonl"))
     return GUIAgent(
         observer,
         planner,
         SafetyPolicy(execute=config.execute, input_fn=input_fn),
         ActionExecutor(controller),
+        retry_policy=RetryPolicy(
+            max_retries_per_step=config.max_retries_per_step,
+        ),
+        max_replans=config.max_replans,
+        event_sink=CompositeEventSink(sinks),
     )
 
 
@@ -314,6 +370,7 @@ def _write_trace(result: AgentRunResult, trace_dir: Path) -> Path:
         "schema_version": 1,
         "status": result.status,
         "failure_stage": result.failure_stage,
+        "reason_code": result.reason_code,
         "decision_count": len(result.decisions),
         "result_statuses": [item.status for item in result.results],
         "action_kinds": [item.action.kind for item in result.decisions],
@@ -382,10 +439,15 @@ def main(
         monitor=monitor,
         region=region,
         max_steps=cast(int, args.max_steps),
+        max_retries_per_step=cast(int, args.max_retries_per_step),
+        max_replans=cast(int, args.max_replans),
         execute=cast(bool, args.execute),
         allow_remote_image=cast(bool, args.allow_remote_image),
-        trace_dir=cast(Path | None, args.trace_dir),
+        run_dir=cast(Path | None, args.run_dir or args.trace_dir),
         adapter_path=cast(Path | None, args.adapter),
+        prompt_profile=cast(str | None, args.prompt_profile),
+        ocr_profile=cast(str, args.ocr_profile),
+        log_level=cast(str, args.log_level),
         api_base=cast(str | None, args.api_base),
         api_key=cast(str | None, args.api_key),
         fake_actions=configured_actions,
@@ -400,13 +462,14 @@ def main(
         "status": result.status,
         "message": result.message,
         "failure_stage": result.failure_stage,
+        "reason_code": result.reason_code,
         "decision_count": len(result.decisions),
         "result_count": len(result.results),
         "dry_run": not config.execute or config.provider == "fake",
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
-    if config.trace_dir is not None:
-        _write_trace(result, config.trace_dir)
+    if config.run_dir is not None:
+        _write_trace(result, config.run_dir)
     return 0 if result.status == "succeeded" else 1
 
 

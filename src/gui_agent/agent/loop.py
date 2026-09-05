@@ -1,8 +1,19 @@
 import time
+import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Literal, Protocol, TypeAlias
 
+from gui_agent.agent.events import (
+    EventEmitter,
+    EventKind,
+    EventSink,
+    NullEventSink,
+    action_metadata,
+    goal_metadata,
+    observation_metadata,
+)
 from gui_agent.agent.planner import MultimodalPlanner
 from gui_agent.agent.policy import ActionDeniedError
 from gui_agent.agent.retry import RetryPolicy
@@ -84,6 +95,9 @@ class GUIAgent:
         retry_policy: RetryPolicy | None = None,
         clock: Callable[[float], None] = time.sleep,
         max_replans: int = 1,
+        event_sink: EventSink | None = None,
+        run_id_factory: Callable[[], str] = lambda: uuid.uuid4().hex,
+        event_clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         if isinstance(max_replans, bool) or max_replans not in {0, 1}:
             raise ValueError("max_replans must be 0 or 1")
@@ -95,6 +109,10 @@ class GUIAgent:
         self._retry_policy = retry_policy or RetryPolicy()
         self._clock = clock
         self._max_replans = max_replans
+        self._event_sink = event_sink or NullEventSink()
+        self._run_id_factory = run_id_factory
+        self._event_clock = event_clock
+        self._emitter: EventEmitter | None = None
 
     def run(
         self,
@@ -109,6 +127,16 @@ class GUIAgent:
             raise ValueError("max_steps must be a positive integer")
         if success_criteria is not None and not success_criteria.strip():
             raise ValueError("success_criteria must not be blank")
+
+        self._emitter = EventEmitter(
+            self._event_sink,
+            run_id=self._run_id_factory(),
+            clock=self._event_clock,
+        )
+        self._emit(
+            "run_started",
+            {**goal_metadata(goal), "max_steps": max_steps},
+        )
 
         decisions: list[AgentDecision] = []
         results: list[StepResult] = []
@@ -142,6 +170,7 @@ class GUIAgent:
         try:
             plan = self._planner.create_plan(goal, observation)
             progress = PlanProgress.from_plan(plan)
+            self._emit("plan_created", {"step_count": len(plan.steps)})
         except Exception as error:
             return self._failure(
                 goal,
@@ -175,6 +204,14 @@ class GUIAgent:
                 summary=failure.summary,
             )
             if retry.retry:
+                self._emit(
+                    "retry_scheduled",
+                    {
+                        "reason_code": retry.reason_code,
+                        "delay_seconds": retry.delay_seconds,
+                        "attempt": active.attempts,
+                    },
+                )
                 self._clock(retry.delay_seconds)
                 return None
             if failure.retryable and progress.replan_count < self._max_replans:
@@ -196,6 +233,14 @@ class GUIAgent:
                         plan,
                         progress,
                         proposed,
+                    )
+                    self._emit(
+                        "plan_revised",
+                        {
+                            "reason_code": replan_context.reason_code,
+                            "step_count": len(plan.steps),
+                            "replan_count": progress.replan_count,
+                        },
                     )
                     return None
                 except Exception as error:
@@ -227,6 +272,13 @@ class GUIAgent:
             )
 
         while step_index < max_steps:
+            self._emit(
+                "step_started",
+                {
+                    "step_index": step_index,
+                    "active_step_id": progress.active_step_id,
+                },
+            )
             state = AgentState(
                 goal=goal,
                 plan=plan,
@@ -252,6 +304,13 @@ class GUIAgent:
                     verifications=verifications,
                 )
             decisions.append(next_decision)
+            self._emit(
+                "action_proposed",
+                {
+                    "current_step_id": next_decision.current_step_id,
+                    **action_metadata(next_decision.action),
+                },
+            )
             try:
                 progress = progress.select_step(
                     next_decision.current_step_id
@@ -291,6 +350,10 @@ class GUIAgent:
                     next_decision.action,
                     observation,
                     expected_outcome=next_decision.expected_outcome,
+                )
+                self._emit(
+                    "action_authorized",
+                    action_metadata(next_decision.action),
                 )
             except Exception as error:
                 progress = progress.fail_active()
@@ -338,20 +401,51 @@ class GUIAgent:
                     message=f"action execution failed ({type(error).__name__})",
                 )
             results.append(step_result)
+            self._emit(
+                "action_executed",
+                {
+                    **action_metadata(next_decision.action),
+                    "status": step_result.status,
+                    "step_index": step_result.step_index,
+                },
+            )
 
             before = observation
             step_index += 1
             after, observation_failure = self._observe_with_retry(step_index)
             if observation_failure is not None:
                 verifications.append(observation_failure)
+                self._emit(
+                    "verification_completed",
+                    {
+                        "passed": False,
+                        "reason_code": observation_failure.reason_code,
+                    },
+                )
                 recovered = recover(observation_failure)
                 if recovered is not None:
                     return recovered
                 continue
             assert after is not None
             observation = after
-            verification = verifier.verify(before, next_decision, step_result, after)
+            try:
+                verification = verifier.verify(before, next_decision, step_result, after)
+            except Exception:
+                verification = VerificationResult(
+                    passed=False,
+                    reason_code="expected_text_missing",
+                    summary="outcome verification failed",
+                    retryable=False,
+                )
             verifications.append(verification)
+            self._emit(
+                "verification_completed",
+                {
+                    "passed": verification.passed,
+                    "reason_code": verification.reason_code,
+                    "evidence_count": len(verification.evidence),
+                },
+            )
             if not verification.passed:
                 recovered = recover(verification)
                 if recovered is not None:
@@ -435,7 +529,9 @@ class GUIAgent:
         attempt = 1
         while True:
             try:
-                return self._observer.observe(step_index), None
+                observed = self._observer.observe(step_index)
+                self._emit("observation_completed", observation_metadata(observed))
+                return observed, None
             except Exception as error:
                 failure = VerificationResult(
                     passed=False,
@@ -446,12 +542,19 @@ class GUIAgent:
                 retry = self._retry_policy.decide(failure, attempt=attempt)
                 if not retry.retry:
                     return None, failure.model_copy(update={"retryable": False})
+                self._emit(
+                    "retry_scheduled",
+                    {
+                        "reason_code": retry.reason_code,
+                        "delay_seconds": retry.delay_seconds,
+                        "attempt": attempt,
+                    },
+                )
                 self._clock(retry.delay_seconds)
                 attempt += 1
 
-    @classmethod
     def _failure(
-        cls,
+        self,
         goal: str,
         stage: FailureStage,
         error: Exception,
@@ -464,7 +567,7 @@ class GUIAgent:
         reason_code: FailureReason,
         verifications: Sequence[VerificationResult],
     ) -> AgentRunResult:
-        return cls._result(
+        return self._result(
             goal,
             status="failed",
             message=f"{stage} failed ({type(error).__name__})",
@@ -490,8 +593,8 @@ class GUIAgent:
             return "policy"
         return "verification"
 
-    @staticmethod
     def _result(
+        self,
         goal: str,
         *,
         status: RunStatus,
@@ -505,7 +608,7 @@ class GUIAgent:
         failure_stage: FailureStage | None = None,
         reason_code: FailureReason | None = None,
     ) -> AgentRunResult:
-        return AgentRunResult(
+        result = AgentRunResult(
             goal=goal,
             status=status,
             message=message,
@@ -518,6 +621,25 @@ class GUIAgent:
             reason_code=reason_code,
             verifications=tuple(verifications),
         )
+        self._emit(
+            "run_finished",
+            {
+                "status": status,
+                "failure_stage": failure_stage,
+                "reason_code": reason_code,
+                "decision_count": len(decisions),
+                "result_count": len(results),
+            },
+        )
+        return result
+
+    def _emit(self, kind: EventKind, payload: dict[str, object]) -> None:
+        if self._emitter is None:
+            return
+        try:
+            self._emitter.emit(kind, payload)
+        except Exception:
+            self._emitter = None
 
 
 __all__ = [

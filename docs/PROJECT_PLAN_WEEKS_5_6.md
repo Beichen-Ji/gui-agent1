@@ -876,7 +876,7 @@ class CompositeEventSink:
 
 事件至少包括：`run_started`、`plan_created`、`step_started`、`observation_completed`、`action_proposed`、`action_authorized`、`action_executed`、`verification_completed`、`retry_scheduled`、`plan_revised`、`run_finished`。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 测试稳定递增 sequence、UTC 时间、run ID 注入、JSONL 一行一事件、异常仍写 `run_finished`、sink 失败不导致重复桌面动作、typed text 只记录长度、goal 只记录 SHA-256、OCR 只记录数量/摘要哈希。
 
@@ -884,7 +884,7 @@ class CompositeEventSink:
 uv run pytest tests/test_agent_events.py tests/test_agent_cli.py -v
 ```
 
-- [ ] **Step 2: 实现 CLI**
+- [x] **Step 2: 实现 CLI**
 
 新增：`--max-retries-per-step`、`--max-replans`、`--ocr-profile`、`--run-dir`、`--log-level`；沿用 Week 5 已增加的 `--adapter` 和 `--prompt-profile`。现有 `--trace-dir` 在 v0.6 中保留为 `--run-dir` 的 deprecated alias，两者不能同时出现。`--execute` 和逐动作确认语义不变。
 
@@ -903,7 +903,7 @@ uv run gui-agent run `
   --run-dir artifacts/agent-runs/week6-search
 ```
 
-- [ ] **Step 3: GREEN 与提交**
+- [x] **Step 3: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_agent_events.py tests/test_agent_cli.py tests/test_agent_loop.py -v

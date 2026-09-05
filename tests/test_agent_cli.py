@@ -1,3 +1,4 @@
+import json
 import subprocess
 import sys
 from collections.abc import Callable
@@ -73,6 +74,12 @@ def test_cli_help_lists_commands_and_run_safety_options(
             "--execute",
             "--allow-remote-image",
             "--trace-dir",
+            "--run-dir",
+            "--max-retries-per-step",
+            "--max-replans",
+            "--ocr-profile",
+            "--prompt-profile",
+            "--log-level",
         ):
             assert option in output
 
@@ -107,6 +114,8 @@ def test_delegated_help_works_outside_repository_directory(
         ["run", "--task", "Open Browser", "--provider", "invalid"],
         ["run", "--task", "Open Browser", "--max-steps", "0"],
         ["run", "--task", "Open Browser", "--monitor", "0"],
+        ["run", "--task", "Open Browser", "--max-retries-per-step", "3"],
+        ["run", "--task", "Open Browser", "--max-replans", "2"],
     ],
 )
 def test_cli_rejects_missing_task_invalid_provider_and_non_positive_limits(
@@ -148,6 +157,11 @@ def test_cli_defaults_to_dry_run_and_passes_validated_runtime_options() -> None:
     assert configs[0].provider == "fake"
     assert configs[0].monitor == 1
     assert configs[0].region is None
+    assert configs[0].max_retries_per_step == 2
+    assert configs[0].max_replans == 1
+    assert configs[0].ocr_profile == "balanced"
+    assert configs[0].prompt_profile is None
+    assert configs[0].log_level == "INFO"
     assert runner.calls == [("Open Browser", None, 4)]
 
 
@@ -360,6 +374,84 @@ def test_cli_trace_redacts_typed_text_and_writes_only_when_requested(
     assert exit_code == 0
     assert secret not in trace
     assert '"action_kinds": [\n    "type_text"' in trace
+
+
+def test_cli_run_dir_and_deprecated_trace_dir_are_mutually_exclusive(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(SystemExit) as captured:
+        cli.main(
+            [
+                "run",
+                "--task",
+                "Open Browser",
+                "--run-dir",
+                str(tmp_path / "run"),
+                "--trace-dir",
+                str(tmp_path / "trace"),
+            ]
+        )
+
+    assert captured.value.code == 2
+
+
+def test_cli_accepts_explicit_v2_runtime_options() -> None:
+    configs: list[cli.RunConfig] = []
+    runner = RuntimeProbe(run_result())
+
+    exit_code = cli.main(
+        [
+            "run",
+            "--task",
+            "Open Browser",
+            "--provider",
+            "qwen",
+            "--max-retries-per-step",
+            "1",
+            "--max-replans",
+            "0",
+            "--ocr-profile",
+            "accurate",
+            "--prompt-profile",
+            "week5-grounded",
+            "--log-level",
+            "DEBUG",
+        ],
+        runtime_factory=lambda config, _input: configs.append(config) or runner,
+    )
+
+    assert exit_code == 0
+    assert configs[0].max_retries_per_step == 1
+    assert configs[0].max_replans == 0
+    assert configs[0].ocr_profile == "accurate"
+    assert configs[0].prompt_profile == "week5-grounded"
+    assert configs[0].log_level == "DEBUG"
+
+
+def test_cli_run_dir_writes_events_and_summary_while_final_json_stays_on_stdout(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    run_dir = tmp_path / "agent-run"
+
+    exit_code = cli.main(
+        [
+            "run",
+            "--task",
+            "Open Browser",
+            "--provider",
+            "fake",
+            "--run-dir",
+            str(run_dir),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert json.loads(captured.out)["status"] == "succeeded"
+    assert "run_started" in captured.err
+    assert (run_dir / "events.jsonl").is_file()
+    assert (run_dir / "run-summary.json").is_file()
 
 
 def test_agent_demo_forwards_arguments_to_run_subcommand(
