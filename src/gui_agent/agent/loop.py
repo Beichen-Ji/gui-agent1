@@ -146,8 +146,14 @@ class GUIAgent:
         progress: PlanProgress | None = None
         replan_context: ReplanContext | None = None
         has_verification_evidence = False
-        verifier = self._verifier or CompositeOutcomeVerifier(
-            (RuleBasedOutcomeVerifier(success_criteria=success_criteria),)
+        verified_step_id: str | None = None
+        deterministic_verifier = RuleBasedOutcomeVerifier(
+            success_criteria=success_criteria
+        )
+        verifier = CompositeOutcomeVerifier(
+            (deterministic_verifier, self._verifier)
+            if self._verifier is not None
+            else (deterministic_verifier,)
         )
 
         observation, observation_failure = self._observe_with_retry(0)
@@ -188,11 +194,12 @@ class GUIAgent:
         step_index = 0
 
         def recover(failure: VerificationResult) -> AgentRunResult | None:
-            nonlocal plan, progress, replan_context
+            nonlocal plan, progress, replan_context, verified_step_id
             assert plan is not None
             assert progress is not None
             assert observation is not None
             assert failure.reason_code is not None
+            verified_step_id = None
             active = next(
                 step
                 for step in progress.steps
@@ -312,9 +319,13 @@ class GUIAgent:
                 },
             )
             try:
+                previous_active_step_id = progress.active_step_id
                 progress = progress.select_step(
-                    next_decision.current_step_id
+                    next_decision.current_step_id,
+                    verified_step_id=verified_step_id,
                 ).record_attempt(next_decision.current_step_id)
+                if next_decision.current_step_id != previous_active_step_id:
+                    verified_step_id = None
             except ValueError as error:
                 return self._failure(
                     goal,
@@ -457,6 +468,7 @@ class GUIAgent:
                 has_verification_evidence = (
                     has_verification_evidence or bool(verification.evidence)
                 )
+                verified_step_id = progress.active_step_id
                 continue
 
             if not next_decision.action.success:
@@ -475,7 +487,10 @@ class GUIAgent:
                     verifications=verifications,
                 )
 
-            has_expected_text = "expected_text_present" in verification.evidence
+            has_expected_text = bool(
+                {"expected_text_present", "expected_text_absent"}
+                & set(verification.evidence)
+            )
             active_is_last = all(
                 step.status == "completed" or step.step_id == progress.active_step_id
                 for step in progress.steps

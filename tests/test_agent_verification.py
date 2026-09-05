@@ -134,6 +134,50 @@ def test_finish_checks_quoted_success_text_when_present() -> None:
     assert "expected_text_present" in found.evidence
 
 
+def test_finish_rejects_unquoted_success_criteria_as_unverifiable() -> None:
+    action = FinishAction(success=True, summary="Done")
+    verifier = RuleBasedOutcomeVerifier(
+        success_criteria="The requested area is visible and ready."
+    )
+
+    verified = verifier.verify(
+        observation(0),
+        decision(action),
+        result(action),
+        observation(1, "The requested area is visible and ready"),
+    )
+
+    assert verified.passed is False
+    assert verified.reason_code == "expected_text_missing"
+    assert verified.retryable is False
+
+
+def test_finish_supports_quoted_text_that_must_no_longer_be_visible() -> None:
+    action = FinishAction(success=True, summary="Closed")
+    verifier = RuleBasedOutcomeVerifier(
+        success_criteria=(
+            "The text 'Local GUI Agent Testbed' is no longer visible."
+        )
+    )
+
+    still_visible = verifier.verify(
+        observation(0),
+        decision(action),
+        result(action),
+        observation(1, "Local GUI Agent Testbed"),
+    )
+    absent = verifier.verify(
+        observation(0),
+        decision(action),
+        result(action),
+        observation(1, "Unrelated desktop"),
+    )
+
+    assert still_visible.reason_code == "expected_text_missing"
+    assert absent.passed is True
+    assert "expected_text_absent" in absent.evidence
+
+
 class PassingSemanticVerifier:
     def verify(
         self,

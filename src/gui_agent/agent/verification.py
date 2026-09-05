@@ -14,6 +14,12 @@ from gui_agent.agent.types import (
 )
 
 _QUOTED_TEXT = re.compile(r"['\"]([^'\"]+)['\"]")
+_ABSENCE_MARKERS = (
+    "no longer visible",
+    "not visible",
+    "is absent",
+    "does not display",
+)
 _DETERMINISTIC_FAILURES = frozenset(
     {"execution_error", "policy_denied", "confirmation_rejected"}
 )
@@ -78,23 +84,50 @@ class RuleBasedOutcomeVerifier:
             )
 
         if isinstance(decision.action, FinishAction):
+            criteria = self._success_criteria
             expected = (
-                tuple(_QUOTED_TEXT.findall(self._success_criteria))
-                if self._success_criteria
+                tuple(_QUOTED_TEXT.findall(criteria))
+                if criteria
                 else ()
             )
             observed = " ".join(_normalized_text(after))
-            if expected and not all(text.casefold() in observed for text in expected):
+            if criteria and not expected:
                 return VerificationResult(
                     passed=False,
                     reason_code="expected_text_missing",
-                    summary="Quoted success text is missing from the latest observation",
+                    summary="Success criteria require quoted text for deterministic verification",
+                    retryable=False,
+                )
+            requires_absence = criteria is not None and any(
+                marker in criteria.casefold()
+                for marker in _ABSENCE_MARKERS
+            )
+            expected_found = tuple(
+                text.casefold() in observed for text in expected
+            )
+            criteria_satisfied = (
+                not any(expected_found)
+                if requires_absence
+                else all(expected_found)
+            )
+            if expected and not criteria_satisfied:
+                return VerificationResult(
+                    passed=False,
+                    reason_code="expected_text_missing",
+                    summary="Quoted success text does not match the latest observation",
                     retryable=True,
                 )
+            finish_evidence = (
+                "expected_text_absent"
+                if expected and requires_absence
+                else "expected_text_present"
+                if expected
+                else "finish_signal"
+            )
             return VerificationResult(
                 passed=True,
                 summary="The finish signal is consistent with the latest observation",
-                evidence=("expected_text_present",) if expected else ("finish_signal",),
+                evidence=(finish_evidence,),
             )
 
         before_screen = before.screenshot

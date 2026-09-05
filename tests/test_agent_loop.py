@@ -20,6 +20,7 @@ from gui_agent.agent.types import (
     StepResult,
     TaskPlan,
     TaskStep,
+    VerificationResult,
 )
 from gui_agent.control.controller import DesktopController
 from gui_agent.types import Point, ScreenRegion, ScreenshotResult
@@ -409,6 +410,30 @@ def test_loop_advances_progress_when_planner_selects_the_next_step() -> None:
     assert planner.states[1].progress.active_step_id == "step-1"
 
 
+def test_loop_rejects_advancing_before_the_current_step_is_verified() -> None:
+    events: list[str] = []
+    task_plan = make_plan(step_ids=("step-1", "step-2"))
+    premature = AgentDecision(
+        current_step_id="step-2",
+        rationale_summary="Skip the unverified first step.",
+        action=ClickAction(x=20, y=30),
+        expected_outcome="The second step runs early.",
+    )
+    executor = RecordingExecutor(events)
+
+    result = GUIAgent(
+        RecordingObserver(events),
+        RecordingPlanner(events, plan=task_plan, decisions=(premature,)),
+        RecordingPolicy(events),
+        executor,
+    ).run(task_plan.goal)
+
+    assert result.status == "failed"
+    assert result.failure_stage == "planning"
+    assert result.reason_code == "planner_output_invalid"
+    assert executor.calls == []
+
+
 @pytest.mark.parametrize("step_id", ["invented-step", "step-3"])
 def test_loop_rejects_a_decision_outside_the_active_or_next_plan_step(
     step_id: str,
@@ -513,6 +538,43 @@ class ExecutedExecutor:
             status="executed",
             message="synthetic action executed",
         )
+
+
+class AlwaysPassingVerifier:
+    def verify(
+        self,
+        before: Observation,
+        proposed: AgentDecision,
+        execution: StepResult,
+        after: Observation,
+    ) -> VerificationResult:
+        del before, proposed, execution, after
+        return VerificationResult(
+            passed=True,
+            summary="A semantic verifier guessed success",
+            evidence=("semantic_guess",),
+        )
+
+
+def test_custom_verifier_cannot_override_execution_failure() -> None:
+    events: list[str] = []
+
+    result = GUIAgent(
+        RecordingObserver(events),
+        RecordingPlanner(
+            events,
+            decisions=(decision(ClickAction(x=10, y=20)),),
+        ),
+        RecordingPolicy(events),
+        FlakyExecutor(events, failures=1),
+        verifier=AlwaysPassingVerifier(),
+        retry_policy=RetryPolicy(max_retries_per_step=0),
+        max_replans=0,
+    ).run("Open Browser")
+
+    assert result.status == "failed"
+    assert result.failure_stage == "execution"
+    assert result.reason_code == "retry_exhausted"
 
 
 def test_loop_recovers_from_one_execution_error_with_a_new_action() -> None:

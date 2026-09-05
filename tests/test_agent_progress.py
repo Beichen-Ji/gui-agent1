@@ -65,7 +65,7 @@ def test_progress_initializes_one_active_step_and_is_immutable() -> None:
     assert [step.attempts for step in progress.steps] == [0, 0]
     assert progress.replan_count == 0
     with pytest.raises(ValidationError, match="frozen"):
-        progress.active_step_id = "step-2"  # type: ignore[misc]
+        progress.active_step_id = "step-2"
 
 
 def test_progress_records_only_the_active_step_attempt() -> None:
@@ -79,10 +79,13 @@ def test_progress_records_only_the_active_step_attempt() -> None:
         progress.record_attempt("step-2")
 
 
-def test_selecting_next_step_completes_current_and_cannot_repeat_it() -> None:
+def test_selecting_next_step_requires_verified_current_step() -> None:
     progress = PlanProgress.from_plan(plan("step-1", "step-2", "step-3"))
 
-    advanced = progress.select_step("step-2")
+    with pytest.raises(ValueError, match="successful verification"):
+        progress.select_step("step-2")
+
+    advanced = progress.select_step("step-2", verified_step_id="step-1")
 
     assert advanced.active_step_id == "step-2"
     assert [step.status for step in advanced.steps] == [
@@ -93,7 +96,7 @@ def test_selecting_next_step_completes_current_and_cannot_repeat_it() -> None:
     with pytest.raises(ValueError, match="completed"):
         advanced.select_step("step-1")
     with pytest.raises(ValueError, match="next pending"):
-        progress.select_step("step-3")
+        progress.select_step("step-3", verified_step_id="step-1")
     with pytest.raises(ValueError, match="not part"):
         progress.select_step("invented-step")
 
@@ -114,7 +117,10 @@ def test_completing_last_step_has_terminal_progress() -> None:
 
 def test_replan_preserves_completed_facts_and_uses_stable_ids() -> None:
     original = plan("step-1", "step-2")
-    progress = PlanProgress.from_plan(original).select_step("step-2")
+    progress = PlanProgress.from_plan(original).select_step(
+        "step-2",
+        verified_step_id="step-1",
+    )
     proposed = TaskPlan(
         goal="A model tried to rewrite the goal",
         steps=(
@@ -164,4 +170,3 @@ def test_fake_planner_returns_revised_plans_deterministically() -> None:
     assert planner.revise_plan(agent_state, failure) == revised
     with pytest.raises(PlannerError, match="revised plan"):
         planner.revise_plan(agent_state, failure)
-

@@ -160,7 +160,12 @@ class PlanProgress(_StrictFrozenModel):
             step.model_copy(update={"attempts": step.attempts + 1}),
         )
 
-    def select_step(self, step_id: str) -> "PlanProgress":
+    def select_step(
+        self,
+        step_id: str,
+        *,
+        verified_step_id: str | None = None,
+    ) -> "PlanProgress":
         requested_index = self._step_index(step_id)
         requested = self.steps[requested_index]
         if requested.status == "completed":
@@ -176,6 +181,8 @@ class PlanProgress(_StrictFrozenModel):
         active = self.steps[active_index]
         if active.status != "active" or requested_index != active_index + 1:
             raise ValueError("a decision may select only the active or next pending step")
+        if verified_step_id != active.step_id:
+            raise ValueError("the current step requires successful verification")
         updated = list(self.steps)
         updated[active_index] = active.model_copy(update={"status": "completed"})
         updated[requested_index] = requested.model_copy(update={"status": "active"})

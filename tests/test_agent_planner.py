@@ -132,7 +132,10 @@ def test_action_and_replan_prompts_send_only_completed_and_active_progress() -> 
             TaskStep(id="step-3", description="Sensitive future detail"),
         ),
     )
-    progress = PlanProgress.from_plan(plan).select_step("step-2")
+    progress = PlanProgress.from_plan(plan).select_step(
+        "step-2",
+        verified_step_id="step-1",
+    )
     failure = ReplanContext(
         reason_code="no_visual_change",
         summary="The expected panel did not appear",
