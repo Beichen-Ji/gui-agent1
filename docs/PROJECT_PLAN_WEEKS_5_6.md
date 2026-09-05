@@ -617,7 +617,7 @@ uv run gui-agent training evaluate `
 
 报告列出样本数、数据 revision、训练参数、三组完整指标、失败类型和已知限制。若 adapter 未超过 baseline，不得写“准确率提升”；只允许再执行一次预先定义的变体：`learning_rate=0.00005`、`num_train_epochs=2.0`，其余配置和 split 不变。第二次仍无提升则保留负结果并说明原因，不继续试到“碰巧成功”。只有 `schema_valid_rate` 不下降，且动作类别准确率或点击命中率至少一项提高时，adapter 才能成为 Week 6 默认值。
 
-- [ ] **Step 5: Week 5 验收与 PR**
+- [x] **Step 5: Week 5 验收与 PR**
 
 ```powershell
 uv lock --check
@@ -634,6 +634,8 @@ gh pr create --draft --base master --head codex/week5-lora-improvement `
 ```
 
 验收标准：数据切分无 episode 泄漏；单步训练/save/reload 通过；正式 adapter 可由 planner 加载；三组对比可复现；Git 不含数据、权重、截图或密钥；报告不夸大效果。
+
+执行记录（2026-09-04）：332 项普通测试通过、2 项 integration deselected、覆盖率 86%，Ruff/mypy/锁文件检查通过；代码和报告已推送到 Draft PR [#5](https://github.com/Beichen-Ji/gui-agent1/pull/5)。adapter 和训练数据只保留在本地忽略目录。默认与唯一预定义变体均未提高动作类别准确率或点击命中率，因此 Week 6 默认不加载 adapter。
 
 ---
 
