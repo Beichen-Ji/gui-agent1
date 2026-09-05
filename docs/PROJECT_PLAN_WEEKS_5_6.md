@@ -804,7 +804,7 @@ git commit -m "feat: add bounded GUI action recovery"
 
 **Produces:** `fast`、`balanced`、`accurate` 三个明确 profile；固定合成 UI benchmark；完全相同帧的安全 OCR cache。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 覆盖 BGR/灰度输入、CLAHE/缩放坐标还原、profile 参数校验、文本标准化、box IoU 匹配、precision/recall/F1、median/p95 延迟、相同帧 cache hit、任一像素/origin/profile 变化 cache miss。
 
@@ -812,7 +812,7 @@ git commit -m "feat: add bounded GUI action recovery"
 uv run pytest tests/test_perception_preprocessing.py tests/test_perception_benchmark.py tests/test_ocr.py tests/test_agent_observation.py -v
 ```
 
-- [ ] **Step 2: 扩展 OCR 参数而不泄漏 EasyOCR 实现**
+- [x] **Step 2: 扩展 OCR 参数而不泄漏 EasyOCR 实现**
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -830,7 +830,7 @@ class OCRProfile:
 
 `OCRReader` protocol 和 `EasyOCRBackend` 透传受控白名单参数；禁止任意 `**kwargs` 从 CLI 进入 EasyOCR。
 
-- [ ] **Step 3: 建立基线再选择默认 profile**
+- [x] **Step 3: 建立基线再选择默认 profile**
 
 ```powershell
 $env:EASYOCR_MODULE_PATH = Join-Path $PWD "models\easyocr"
@@ -843,7 +843,7 @@ uv run python scripts/benchmark_ocr.py `
 
 默认 profile 必须满足：冷帧文字 F1 不低于 Week 4 baseline；冷帧 median latency 不恶化超过 10%；相同帧重复观察 p50 延迟至少下降 50%。若某 profile 不满足，不设为默认，只在报告中保留结果。
 
-- [ ] **Step 4: GREEN 与提交**
+- [x] **Step 4: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_perception_preprocessing.py tests/test_perception_benchmark.py tests/test_ocr.py tests/test_agent_observation.py -v

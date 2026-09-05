@@ -15,6 +15,7 @@ from gui_agent.types import (
 )
 
 DEFAULT_ORIGIN = Point(0, 0)
+SCREENSHOT_ORIGIN = Point(-60, 20)
 
 
 class FakeCapture:
@@ -62,6 +63,7 @@ class FakeOCR:
         self.detections = detections
         self.error = error
         self.calls: list[tuple[ImageArray, Point, float]] = []
+        self.cache_token = "fast"
 
     def recognize(
         self,
@@ -151,3 +153,55 @@ def test_observe_propagates_ocr_errors() -> None:
         ObservationBuilder(capture, ocr).observe(step_index=0)
 
     assert capture.calls == [(1, None)]
+
+
+class SequenceCapture(FakeCapture):
+    def __init__(self, screenshots: list[ScreenshotResult]) -> None:
+        super().__init__(screenshots[0])
+        self._screenshots = iter(screenshots)
+
+    def capture_monitor(
+        self,
+        monitor_index: int = 1,
+        *,
+        save_path: Path | None = None,
+    ) -> ScreenshotResult:
+        self.calls.append((monitor_index, save_path))
+        return next(self._screenshots)
+
+
+def screenshot_with(value: int, *, origin: Point = SCREENSHOT_ORIGIN) -> ScreenshotResult:
+    return ScreenshotResult(
+        image=np.full((40, 60, 3), value, dtype=np.uint8),
+        monitor_index=2,
+        captured_at=datetime(2026, 9, 5, tzinfo=UTC),
+        origin=origin,
+    )
+
+
+def test_observation_cache_hits_only_for_an_exact_frame_origin_and_profile() -> None:
+    repeated = screenshot_with(0)
+    changed_pixel = screenshot_with(0)
+    changed_pixel.image[0, 0, 0] = 1
+    captures = SequenceCapture(
+        [
+            repeated,
+            screenshot_with(0),
+            changed_pixel,
+            screenshot_with(0, origin=Point(0, 0)),
+            screenshot_with(0, origin=Point(0, 0)),
+        ]
+    )
+    ocr = FakeOCR([])
+    builder = ObservationBuilder(captures, ocr, monitor_index=2)
+
+    builder.observe(0)
+    builder.observe(1)
+    assert len(ocr.calls) == 1
+    builder.observe(2)
+    assert len(ocr.calls) == 2
+    builder.observe(3)
+    assert len(ocr.calls) == 3
+    ocr.cache_token = "balanced"
+    builder.observe(4)
+    assert len(ocr.calls) == 4
