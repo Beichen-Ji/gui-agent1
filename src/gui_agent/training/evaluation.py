@@ -521,7 +521,7 @@ def _peak_vram_mib() -> float:
         import torch
 
         if torch.cuda.is_available():
-            return torch.cuda.max_memory_allocated() / (1024 * 1024)
+            return float(torch.cuda.max_memory_allocated()) / (1024 * 1024)
     except (ImportError, RuntimeError):
         pass
     return 0.0

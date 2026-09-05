@@ -25,6 +25,12 @@ from gui_agent.training.schema import TrainingExample, TrainingManifest
 HistoryValue = int | float | str | bool | None
 
 
+def _history_value(value: object) -> HistoryValue:
+    if isinstance(value, (int, float, str, bool)) or value is None:
+        return value
+    raise TypeError("training history contains an unsupported value")
+
+
 @dataclass(frozen=True, slots=True)
 class BackendResult:
     history: tuple[dict[str, HistoryValue], ...]
@@ -225,7 +231,7 @@ def _default_training_backend(
     cast(Any, processor).save_pretrained(adapter_dir)
     history = tuple(
         {
-            key: cast(HistoryValue, value)
+            key: _history_value(value)
             for key, value in row.items()
             if isinstance(value, (int, float, str, bool)) or value is None
         }
