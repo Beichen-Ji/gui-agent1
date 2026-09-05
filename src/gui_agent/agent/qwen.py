@@ -14,6 +14,7 @@ from gui_agent.agent.prompts import (
     PromptProfile,
     build_action_prompt,
     build_plan_prompt,
+    build_replan_prompt,
     get_prompt_profile,
 )
 from gui_agent.agent.types import (
@@ -21,6 +22,7 @@ from gui_agent.agent.types import (
     AgentDecision,
     AgentState,
     Observation,
+    ReplanContext,
     TaskPlan,
 )
 from gui_agent.types import ScreenRegion
@@ -319,6 +321,13 @@ class QwenTransformersPlanner:
         return self._invoke(
             AgentDecision,
             build_action_prompt(state, profile=self._prompt_profile),
+            state.observation,
+        )
+
+    def revise_plan(self, state: AgentState, failure: ReplanContext) -> TaskPlan:
+        return self._invoke(
+            TaskPlan,
+            build_replan_prompt(state, failure, profile=self._prompt_profile),
             state.observation,
         )
 

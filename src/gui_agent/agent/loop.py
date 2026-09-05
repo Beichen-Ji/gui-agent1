@@ -9,6 +9,7 @@ from gui_agent.agent.types import (
     AgentState,
     FinishAction,
     Observation,
+    PlanProgress,
     StepResult,
     TaskPlan,
 )
@@ -32,6 +33,7 @@ class AgentRunResult:
     observation: Observation | None
     decisions: tuple[AgentDecision, ...]
     results: tuple[StepResult, ...]
+    progress: PlanProgress | None = None
     failure_stage: FailureStage | None = None
 
 
@@ -78,6 +80,7 @@ class GUIAgent:
         results: list[StepResult] = []
         plan: TaskPlan | None = None
         observation: Observation | None = None
+        progress: PlanProgress | None = None
 
         try:
             observation = self._observer.observe(0)
@@ -88,12 +91,14 @@ class GUIAgent:
                 error,
                 plan,
                 observation,
+                progress,
                 decisions,
                 results,
             )
 
         try:
             plan = self._planner.create_plan(goal, observation)
+            progress = PlanProgress.from_plan(plan)
         except Exception as error:
             return self._failure(
                 goal,
@@ -101,14 +106,17 @@ class GUIAgent:
                 error,
                 plan,
                 observation,
+                progress,
                 decisions,
                 results,
             )
 
         for step_index in range(max_steps):
+            assert progress is not None
             state = AgentState(
                 goal=goal,
                 plan=plan,
+                progress=progress,
                 observation=observation,
                 decisions=tuple(decisions),
                 results=tuple(results),
@@ -122,21 +130,39 @@ class GUIAgent:
                     error,
                     plan,
                     observation,
+                    progress,
                     decisions,
                     results,
                 )
             decisions.append(next_decision)
+            try:
+                progress = progress.select_step(
+                    next_decision.current_step_id
+                ).record_attempt(next_decision.current_step_id)
+            except ValueError as error:
+                return self._failure(
+                    goal,
+                    "planning",
+                    error,
+                    plan,
+                    observation,
+                    progress,
+                    decisions,
+                    results,
+                )
 
             if (
                 len(decisions) >= 2
                 and decisions[-2].action == next_decision.action
             ):
+                progress = progress.fail_active()
                 return self._result(
                     goal,
                     status="stopped",
                     message="stopped before executing a repeated action",
                     plan=plan,
                     observation=observation,
+                    progress=progress,
                     decisions=decisions,
                     results=results,
                 )
@@ -148,6 +174,7 @@ class GUIAgent:
                     expected_outcome=next_decision.expected_outcome,
                 )
             except Exception:
+                progress = progress.fail_active()
                 results.append(
                     StepResult(
                         step_index=step_index,
@@ -163,6 +190,7 @@ class GUIAgent:
                     failure_stage="policy",
                     plan=plan,
                     observation=observation,
+                    progress=progress,
                     decisions=decisions,
                     results=results,
                 )
@@ -173,6 +201,7 @@ class GUIAgent:
                     step_index=step_index,
                 )
             except Exception as error:
+                progress = progress.fail_active()
                 results.append(
                     StepResult(
                         step_index=step_index,
@@ -188,11 +217,13 @@ class GUIAgent:
                     failure_stage="execution",
                     plan=plan,
                     observation=observation,
+                    progress=progress,
                     decisions=decisions,
                     results=results,
                 )
             results.append(step_result)
             if step_result.status in {"denied", "failed"}:
+                progress = progress.fail_active()
                 failure_stage: FailureStage = (
                     "policy" if step_result.status == "denied" else "execution"
                 )
@@ -203,6 +234,7 @@ class GUIAgent:
                     failure_stage=failure_stage,
                     plan=plan,
                     observation=observation,
+                    progress=progress,
                     decisions=decisions,
                     results=results,
                 )
@@ -216,11 +248,17 @@ class GUIAgent:
                     error,
                     plan,
                     observation,
+                    progress.fail_active(),
                     decisions,
                     results,
                 )
 
             if isinstance(next_decision.action, FinishAction):
+                progress = (
+                    progress.complete_active()
+                    if next_decision.action.success
+                    else progress.fail_active()
+                )
                 return self._result(
                     goal,
                     status=(
@@ -230,6 +268,7 @@ class GUIAgent:
                     failure_stage=(None if next_decision.action.success else "task"),
                     plan=plan,
                     observation=observation,
+                    progress=progress,
                     decisions=decisions,
                     results=results,
                 )
@@ -240,6 +279,7 @@ class GUIAgent:
             message=f"stopped after reaching maximum step count ({max_steps})",
             plan=plan,
             observation=observation,
+            progress=progress,
             decisions=decisions,
             results=results,
         )
@@ -252,6 +292,7 @@ class GUIAgent:
         error: Exception,
         plan: TaskPlan | None,
         observation: Observation | None,
+        progress: PlanProgress | None,
         decisions: Sequence[AgentDecision],
         results: Sequence[StepResult],
     ) -> AgentRunResult:
@@ -262,6 +303,7 @@ class GUIAgent:
             failure_stage=stage,
             plan=plan,
             observation=observation,
+            progress=progress,
             decisions=decisions,
             results=results,
         )
@@ -274,6 +316,7 @@ class GUIAgent:
         message: str,
         plan: TaskPlan | None,
         observation: Observation | None,
+        progress: PlanProgress | None,
         decisions: Sequence[AgentDecision],
         results: Sequence[StepResult],
         failure_stage: FailureStage | None = None,
@@ -284,6 +327,7 @@ class GUIAgent:
             message=message,
             plan=plan,
             observation=observation,
+            progress=progress,
             decisions=tuple(decisions),
             results=tuple(results),
             failure_stage=failure_stage,

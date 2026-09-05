@@ -37,10 +37,17 @@ def make_observation(step_index: int) -> Observation:
     return Observation(screenshot=screenshot, detections=(), step_index=step_index)
 
 
-def make_plan(goal: str = "Open Browser") -> TaskPlan:
+def make_plan(
+    goal: str = "Open Browser",
+    *,
+    step_ids: tuple[str, ...] = ("step-1",),
+) -> TaskPlan:
     return TaskPlan(
         goal=goal,
-        steps=(TaskStep(id="step-1", description="Complete the task"),),
+        steps=tuple(
+            TaskStep(id=step_id, description=f"Complete {step_id}")
+            for step_id in step_ids
+        ),
     )
 
 
@@ -80,8 +87,9 @@ class RecordingPlanner(FakePlanner):
         decisions: Iterable[AgentDecision],
         fail_create: bool = False,
         fail_next_call: int | None = None,
+        plan: TaskPlan | None = None,
     ) -> None:
-        super().__init__(plan=make_plan(), decisions=decisions)
+        super().__init__(plan=plan or make_plan(), decisions=decisions)
         self.events = events
         self.fail_create = fail_create
         self.fail_next_call = fail_next_call
@@ -364,3 +372,88 @@ def test_loop_turns_executor_failure_into_failed_step_result() -> None:
     assert result.failure_stage == "execution"
     assert len(result.results) == 1
     assert result.results[0].status == "failed"
+
+
+def test_loop_advances_progress_when_planner_selects_the_next_step() -> None:
+    events: list[str] = []
+    task_plan = make_plan(step_ids=("step-1", "step-2"))
+    first = decision(ClickAction(x=20, y=30))
+    finish = AgentDecision(
+        current_step_id="step-2",
+        rationale_summary="The first step is complete.",
+        action=FinishAction(success=True, summary="Workflow complete"),
+        expected_outcome="The run stops successfully.",
+    )
+    planner = RecordingPlanner(events, plan=task_plan, decisions=(first, finish))
+
+    result = GUIAgent(
+        RecordingObserver(events),
+        planner,
+        RecordingPolicy(events),
+        RecordingExecutor(events),
+    ).run(task_plan.goal)
+
+    assert result.status == "succeeded"
+    assert result.progress is not None
+    assert result.progress.is_complete is True
+    assert [step.status for step in result.progress.steps] == [
+        "completed",
+        "completed",
+    ]
+    assert [step.attempts for step in result.progress.steps] == [1, 1]
+    assert planner.states[1].progress.active_step_id == "step-1"
+
+
+@pytest.mark.parametrize("step_id", ["invented-step", "step-3"])
+def test_loop_rejects_a_decision_outside_the_active_or_next_plan_step(
+    step_id: str,
+) -> None:
+    events: list[str] = []
+    task_plan = make_plan(step_ids=("step-1", "step-2", "step-3"))
+    invalid = AgentDecision(
+        current_step_id=step_id,
+        rationale_summary="Try to leave the controlled plan.",
+        action=ClickAction(x=20, y=30),
+        expected_outcome="An unsupported step runs.",
+    )
+    executor = RecordingExecutor(events)
+
+    result = GUIAgent(
+        RecordingObserver(events),
+        RecordingPlanner(events, plan=task_plan, decisions=(invalid,)),
+        RecordingPolicy(events),
+        executor,
+    ).run(task_plan.goal)
+
+    assert result.status == "failed"
+    assert result.failure_stage == "planning"
+    assert executor.calls == []
+
+
+def test_loop_rejects_returning_to_a_completed_step() -> None:
+    events: list[str] = []
+    task_plan = make_plan(step_ids=("step-1", "step-2"))
+    first = decision(ClickAction(x=10, y=20))
+    second = AgentDecision(
+        current_step_id="step-2",
+        rationale_summary="Continue with step two.",
+        action=ClickAction(x=30, y=40),
+        expected_outcome="Step two changes the screen.",
+    )
+    repeat_completed = decision(FinishAction(success=True, summary="Incorrect repeat"))
+    executor = RecordingExecutor(events)
+
+    result = GUIAgent(
+        RecordingObserver(events),
+        RecordingPlanner(
+            events,
+            plan=task_plan,
+            decisions=(first, second, repeat_completed),
+        ),
+        RecordingPolicy(events),
+        executor,
+    ).run(task_plan.goal)
+
+    assert result.status == "failed"
+    assert result.failure_stage == "planning"
+    assert len(executor.calls) == 2

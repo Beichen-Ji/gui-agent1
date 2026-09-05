@@ -20,7 +20,11 @@ from gui_agent.agent.planner import (
     PlannerError,
     RemoteImagePermissionError,
 )
-from gui_agent.agent.prompts import build_action_prompt, build_plan_prompt
+from gui_agent.agent.prompts import (
+    build_action_prompt,
+    build_plan_prompt,
+    build_replan_prompt,
+)
 from gui_agent.agent.qwen import QwenTransformersPlanner
 from gui_agent.agent.types import (
     AgentDecision,
@@ -29,6 +33,8 @@ from gui_agent.agent.types import (
     DragAction,
     FinishAction,
     Observation,
+    PlanProgress,
+    ReplanContext,
     ScrollAction,
     StepResult,
     TaskPlan,
@@ -115,6 +121,40 @@ def test_action_prompt_includes_plan_step_and_recent_result() -> None:
     assert "dry_run" in prompt
     assert "Dry-run click recorded" in prompt
     assert "step_index=0" in prompt
+
+
+def test_action_and_replan_prompts_send_only_completed_and_active_progress() -> None:
+    plan = TaskPlan(
+        goal="Open the browser",
+        steps=(
+            TaskStep(id="step-1", description="Open the app"),
+            TaskStep(id="step-2", description="Use the active control"),
+            TaskStep(id="step-3", description="Sensitive future detail"),
+        ),
+    )
+    progress = PlanProgress.from_plan(plan).select_step("step-2")
+    failure = ReplanContext(
+        reason_code="no_visual_change",
+        summary="The expected panel did not appear",
+    )
+    state = AgentState(
+        goal=plan.goal,
+        plan=plan,
+        progress=progress,
+        replan_context=failure,
+        observation=observation(),
+        decisions=(),
+        results=(),
+    )
+
+    action_prompt = build_action_prompt(state)
+    replan_prompt = build_replan_prompt(state, failure)
+
+    for prompt in (action_prompt, replan_prompt):
+        assert "step-1" in prompt
+        assert "step-2" in prompt
+        assert "Sensitive future detail" not in prompt
+        assert "no_visual_change" in prompt
 
 
 def test_fake_planner_returns_configured_plan_and_decisions_in_order() -> None:

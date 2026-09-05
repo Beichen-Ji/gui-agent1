@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: 使用 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans` 按 Task 顺序执行；每个功能先使用 `superpowers:test-driven-development`，提交或创建 PR 前使用 `superpowers:verification-before-completion`。
 
-**状态：** 用户已批准，正在执行第 5 周；进度以本文复选框和 Git 提交为准。
+**状态：** 用户已批准，Week 5 已合并，正在执行 Week 6；进度以本文复选框和 Git 提交为准。
 
 **任务分类：** 架构级扩展。第 5 周会新增训练与评估子系统，第 6 周会调整 Agent 循环、感知和日志边界，因此分成两个独立分支与 PR，不能在 Week 4 的未完成分支上直接叠加。
 
@@ -643,14 +643,14 @@ gh pr create --draft --base master --head codex/week5-lora-improvement `
 
 ## Task 7: 合并 Week 5 后创建 Week 6 worktree
 
-- [ ] **Step 1: 用户审阅并合并 Week 5 PR**
+- [x] **Step 1: 用户审阅并合并 Week 5 PR**
 
 ```powershell
 gh pr view --json state,isDraft,mergeCommit,url
 git fetch --prune origin
 ```
 
-- [ ] **Step 2: 创建分支并跑基线**
+- [x] **Step 2: 创建分支并跑基线**
 
 ```powershell
 $mainRepo = Split-Path -Parent (git rev-parse --path-format=absolute --git-common-dir)
@@ -700,7 +700,7 @@ class MultimodalPlanner(Protocol):
     def revise_plan(self, state: AgentState, failure: ReplanContext) -> TaskPlan: ...
 ```
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 覆盖稳定 step ID、只允许计划内 step、完成后前进、不可重复完成、重规划保留已完成事实、最多 20 步、最多一次 replan 和 fake planner 的确定性行为。
 
@@ -708,11 +708,11 @@ class MultimodalPlanner(Protocol):
 uv run pytest tests/test_agent_progress.py tests/test_agent_loop.py tests/test_agent_planner.py -v
 ```
 
-- [ ] **Step 2: 最小实现**
+- [x] **Step 2: 最小实现**
 
 `AgentState` 增加不可变 `progress`；prompt 只发送已完成步骤、当前步骤、失败 reason code 和最近三个结果。模型不能把已经完成的动作重新标成未完成。
 
-- [ ] **Step 3: GREEN 与提交**
+- [x] **Step 3: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_agent_progress.py tests/test_agent_loop.py tests/test_agent_planner.py -v
