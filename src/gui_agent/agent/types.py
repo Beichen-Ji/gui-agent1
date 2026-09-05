@@ -66,6 +66,18 @@ AgentAction: TypeAlias = Annotated[
     Field(discriminator="kind"),
 ]
 
+FailureReason: TypeAlias = Literal[
+    "execution_error",
+    "observation_error",
+    "no_visual_change",
+    "expected_text_missing",
+    "planner_output_invalid",
+    "policy_denied",
+    "confirmation_rejected",
+    "repeated_action",
+    "retry_exhausted",
+]
+
 
 class TaskStep(_StrictFrozenModel):
     id: str = Field(min_length=1, max_length=64)
@@ -286,6 +298,36 @@ class StepResult(_StrictFrozenModel):
     message: str = Field(min_length=1, max_length=500)
 
 
+class VerificationResult(_StrictFrozenModel):
+    passed: bool
+    summary: str = Field(min_length=1, max_length=500)
+    reason_code: FailureReason | None = None
+    retryable: bool = False
+    evidence: tuple[str, ...] = Field(default=(), max_length=20)
+
+    @model_validator(mode="after")
+    def _consistent_result(self) -> "VerificationResult":
+        if self.passed and self.reason_code is not None:
+            raise ValueError("a passed verification cannot have a failure reason")
+        if self.passed and self.retryable:
+            raise ValueError("a passed verification cannot be retryable")
+        if not self.passed and self.reason_code is None:
+            raise ValueError("a failed verification requires a reason code")
+        return self
+
+
+class RetryDecision(_StrictFrozenModel):
+    retry: bool
+    delay_seconds: float = Field(default=0.0, ge=0.0, le=5.0)
+    reason_code: FailureReason
+
+    @model_validator(mode="after")
+    def _no_delay_without_retry(self) -> "RetryDecision":
+        if not self.retry and self.delay_seconds != 0.0:
+            raise ValueError("a stopped retry decision cannot have a delay")
+        return self
+
+
 @dataclass(frozen=True, slots=True)
 class Observation:
     screenshot: ScreenshotResult
@@ -341,17 +383,20 @@ __all__ = [
     "AgentState",
     "ClickAction",
     "DragAction",
+    "FailureReason",
     "FinishAction",
     "HotkeyAction",
     "Observation",
     "PlanProgress",
     "ReplanContext",
+    "RetryDecision",
     "ScrollAction",
     "StepResult",
     "StepProgress",
     "TaskPlan",
     "TaskStep",
     "TypeTextAction",
+    "VerificationResult",
     "WaitAction",
     "reconcile_revised_plan",
 ]

@@ -47,6 +47,7 @@ class TaskDefinition:
 @dataclass(frozen=True, slots=True)
 class RunConfig:
     goal: str
+    success_criteria: str | None
     task_id: str | None
     provider: Provider
     model: str
@@ -63,7 +64,13 @@ class RunConfig:
 
 
 class AgentRunner(Protocol):
-    def run(self, goal: str, *, max_steps: int = 10) -> AgentRunResult: ...
+    def run(
+        self,
+        goal: str,
+        *,
+        success_criteria: str | None = None,
+        max_steps: int = 10,
+    ) -> AgentRunResult: ...
 
 
 RuntimeFactory: TypeAlias = Callable[[RunConfig, InputFunction], AgentRunner]
@@ -354,6 +361,7 @@ def main(
     configured_actions: tuple[AgentAction, ...] = ()
     if task_id is None:
         goal = cast(str, args.task)
+        success_criteria = None
     else:
         try:
             task = load_task_definitions(DEFAULT_TASKS_PATH)[task_id]
@@ -362,10 +370,12 @@ def main(
         except ValueError as error:
             parser.error(str(error))
         goal = task.instruction
+        success_criteria = task.success_criteria
         configured_actions = task.actions
 
     config = RunConfig(
         goal=goal,
+        success_criteria=success_criteria,
         task_id=task_id,
         provider=cast(Provider, args.provider),
         model=cast(str, args.model),
@@ -381,7 +391,11 @@ def main(
         fake_actions=configured_actions,
     )
     runner = (runtime_factory or build_runtime)(config, input_fn)
-    result = runner.run(config.goal, max_steps=config.max_steps)
+    result = runner.run(
+        config.goal,
+        success_criteria=config.success_criteria,
+        max_steps=config.max_steps,
+    )
     summary = {
         "status": result.status,
         "message": result.message,

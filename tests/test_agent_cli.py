@@ -19,10 +19,16 @@ from gui_agent.types import ScreenRegion
 class RuntimeProbe:
     def __init__(self, result: AgentRunResult) -> None:
         self.result = result
-        self.calls: list[tuple[str, int]] = []
+        self.calls: list[tuple[str, str | None, int]] = []
 
-    def run(self, goal: str, *, max_steps: int = 10) -> AgentRunResult:
-        self.calls.append((goal, max_steps))
+    def run(
+        self,
+        goal: str,
+        *,
+        success_criteria: str | None = None,
+        max_steps: int = 10,
+    ) -> AgentRunResult:
+        self.calls.append((goal, success_criteria, max_steps))
         return self.result
 
 
@@ -142,7 +148,24 @@ def test_cli_defaults_to_dry_run_and_passes_validated_runtime_options() -> None:
     assert configs[0].provider == "fake"
     assert configs[0].monitor == 1
     assert configs[0].region is None
-    assert runner.calls == [("Open Browser", 4)]
+    assert runner.calls == [("Open Browser", None, 4)]
+
+
+def test_cli_passes_configured_success_criteria_but_not_for_free_text() -> None:
+    task_runner = RuntimeProbe(run_result())
+    free_runner = RuntimeProbe(run_result())
+
+    assert cli.main(
+        ["run", "--task-id", "open-browser", "--provider", "fake"],
+        runtime_factory=lambda _config, _input: task_runner,
+    ) == 0
+    assert cli.main(
+        ["run", "--task", "Open Browser", "--provider", "fake"],
+        runtime_factory=lambda _config, _input: free_runner,
+    ) == 0
+
+    assert task_runner.calls[0][1] == "The Browser area is visible and marked open."
+    assert free_runner.calls[0][1] is None
 
 
 @pytest.mark.parametrize(

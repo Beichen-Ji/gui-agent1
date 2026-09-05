@@ -763,7 +763,7 @@ class GUIAgent:
 
 固定 reason code：`execution_error`、`observation_error`、`no_visual_change`、`expected_text_missing`、`planner_output_invalid`、`policy_denied`、`confirmation_rejected`、`repeated_action`、`retry_exhausted`。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 测试：首次执行异常后成功；界面无变化后 planner 提供不同动作；完全相同动作不重放；policy/confirmation 永不 retry；retry 精确停止于上限；退避为注入 clock，不在普通测试真实 sleep；retry 耗尽后只 replan 一次。
 
@@ -771,15 +771,15 @@ class GUIAgent:
 uv run pytest tests/test_agent_verification.py tests/test_agent_retry.py tests/test_agent_loop.py -v
 ```
 
-- [ ] **Step 2: 实现规则验证器**
+- [x] **Step 2: 实现规则验证器**
 
 先比较截图尺寸/origin、帧 fingerprint、OCR 文本集合变化和 executor 状态。CLI 的 `TaskDefinition.success_criteria` 必须传入 `GUIAgent.run()`；自然语言 `--task` 没有显式 criteria 时保持 `None`。`finish(success=True)` 只有在计划完成且已有验证证据时才能结束。模型语义验证是可选补充，不能覆盖确定性的 policy/execution 失败。
 
-- [ ] **Step 3: 实现 retry 安全不变量**
+- [x] **Step 3: 实现 retry 安全不变量**
 
 默认 `max_retries_per_step=2`、backoff `0.5s, 1.0s`；每次 retry 前重新观察、重新规划、重新 policy 校验并在 live 模式重新确认。禁止直接重放上一动作。
 
-- [ ] **Step 4: GREEN 与提交**
+- [x] **Step 4: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_agent_verification.py tests/test_agent_retry.py tests/test_agent_loop.py tests/test_agent_cli.py -v

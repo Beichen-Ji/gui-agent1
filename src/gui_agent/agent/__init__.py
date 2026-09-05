@@ -7,24 +7,33 @@ from gui_agent.agent.planner import (
 )
 from gui_agent.agent.prompts import build_action_prompt, build_plan_prompt
 from gui_agent.agent.qwen import DEFAULT_QWEN_MODEL, QwenTransformersPlanner
+from gui_agent.agent.retry import RetryPolicy
 from gui_agent.agent.types import (
     AgentAction,
     AgentDecision,
     AgentState,
     ClickAction,
     DragAction,
+    FailureReason,
     FinishAction,
     HotkeyAction,
     Observation,
     PlanProgress,
     ReplanContext,
+    RetryDecision,
     ScrollAction,
     StepProgress,
     StepResult,
     TaskPlan,
     TaskStep,
     TypeTextAction,
+    VerificationResult,
     WaitAction,
+)
+from gui_agent.agent.verification import (
+    CompositeOutcomeVerifier,
+    OutcomeVerifier,
+    RuleBasedOutcomeVerifier,
 )
 
 __all__ = [
@@ -35,23 +44,30 @@ __all__ = [
     "DEFAULT_QWEN_MODEL",
     "DragAction",
     "FakePlanner",
+    "FailureReason",
     "FinishAction",
     "HotkeyAction",
     "LangChainPlanner",
     "MultimodalPlanner",
     "Observation",
+    "OutcomeVerifier",
     "PlanProgress",
     "PlannerError",
     "QwenTransformersPlanner",
     "RemoteImagePermissionError",
     "ReplanContext",
+    "RetryDecision",
+    "RetryPolicy",
+    "RuleBasedOutcomeVerifier",
     "ScrollAction",
     "StepResult",
     "StepProgress",
     "TaskPlan",
     "TaskStep",
     "TypeTextAction",
+    "VerificationResult",
     "WaitAction",
+    "CompositeOutcomeVerifier",
     "build_action_prompt",
     "build_plan_prompt",
 ]
