@@ -132,3 +132,49 @@ def test_training_build_cli_refuses_overwrite_when_generated_files_were_modified
         cli.main([*args, "--overwrite"])
 
     assert train_path.read_text(encoding="utf-8") == "modified\n"
+
+
+def test_training_evaluate_cli_routes_the_frozen_condition(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from gui_agent.training import cli as training_cli
+
+    captured: dict[str, object] = {}
+
+    class ReportProbe:
+        def model_dump(self, **_kwargs: object) -> dict[str, object]:
+            return {"kind": "evaluation-probe"}
+
+    def fake_run_evaluation(**kwargs: object) -> ReportProbe:
+        captured.update(kwargs)
+        return ReportProbe()
+
+    monkeypatch.setattr(training_cli, "run_evaluation", fake_run_evaluation)
+    output = tmp_path / "evaluation.json"
+
+    result = training_cli.main(
+        [
+            "evaluate",
+            "--cases",
+            "configs/week5_eval_cases.json",
+            "--model",
+            "Qwen/Qwen3-VL-4B-Instruct",
+            "--adapter",
+            "artifacts/week5/adapter",
+            "--prompt-profile",
+            "week5-grounded",
+            "--output",
+            str(output),
+        ]
+    )
+
+    assert result == 0
+    assert captured == {
+        "cases_path": Path("configs/week5_eval_cases.json"),
+        "model_name": "Qwen/Qwen3-VL-4B-Instruct",
+        "adapter_path": Path("artifacts/week5/adapter"),
+        "prompt_profile": "week5-grounded",
+        "output_path": output,
+        "overwrite": False,
+    }

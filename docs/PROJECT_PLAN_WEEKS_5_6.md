@@ -578,7 +578,7 @@ git commit -m "feat: load LoRA adapters in local Qwen planner"
 - `click_hit_rate`：预测点是否落在标注目标框内。
 - `median_latency_ms` 和 `peak_vram_mib`。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 测试分母、无合法输出、坐标容差、宏平均、不同 prompt/model 条件不可混算，以及报告 JSON 的确定性顺序。
 
@@ -586,11 +586,11 @@ git commit -m "feat: load LoRA adapters in local Qwen planner"
 uv run pytest tests/test_training_evaluation.py -v
 ```
 
-- [ ] **Step 2: 冻结并验证两个固定 prompt profile**
+- [x] **Step 2: 冻结并验证两个固定 prompt profile**
 
 使用 Task 3 已定义的 `week4-baseline` 与 `week5-grounded`。新 profile 明确当前步骤、最近动作结果、OCR 候选和坐标规则，但不要求或记录隐藏思维链。此步骤只允许通过测试固定模板并运行 A/B，不在看到评估答案后继续改措辞；profile 名称进入 adapter 与评估 manifest。
 
-- [ ] **Step 3: 先记录基础模型，再训练，再评估 adapter**
+- [x] **Step 3: 先记录基础模型，再训练，再评估 adapter**
 
 ```powershell
 uv run gui-agent training evaluate `
@@ -613,7 +613,7 @@ uv run gui-agent training evaluate `
   --output artifacts/week5/adapter.json
 ```
 
-- [ ] **Step 4: 写诚实的对比报告**
+- [x] **Step 4: 写诚实的对比报告**
 
 报告列出样本数、数据 revision、训练参数、三组完整指标、失败类型和已知限制。若 adapter 未超过 baseline，不得写“准确率提升”；只允许再执行一次预先定义的变体：`learning_rate=0.00005`、`num_train_epochs=2.0`，其余配置和 split 不变。第二次仍无提升则保留负结果并说明原因，不继续试到“碰巧成功”。只有 `schema_valid_rate` 不下降，且动作类别准确率或点击命中率至少一项提高时，adapter 才能成为 Week 6 默认值。
 

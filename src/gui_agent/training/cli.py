@@ -7,9 +7,11 @@ from typing import cast
 
 from pydantic import ValidationError
 
+from gui_agent.agent.prompts import PROMPT_PROFILES
 from gui_agent.datasets.schema import DatasetSource, NormalizedGUIRecord
 from gui_agent.training.config import load_training_config
 from gui_agent.training.dataset import build_training_split, write_training_split
+from gui_agent.training.evaluation import run_evaluation
 from gui_agent.training.trainer import run_training
 
 _SOURCES = frozenset({"screenagent", "mind2web", "webarena"})
@@ -39,6 +41,13 @@ def build_parser() -> argparse.ArgumentParser:
     build.add_argument("--seed", type=_non_negative_integer, required=True)
     build.add_argument("--output", type=Path, required=True)
     build.add_argument("--overwrite", action="store_true")
+    evaluate = commands.add_parser("evaluate", help="Evaluate a frozen Week 5 condition")
+    evaluate.add_argument("--cases", type=Path, required=True)
+    evaluate.add_argument("--model", required=True)
+    evaluate.add_argument("--adapter", type=Path)
+    evaluate.add_argument("--prompt-profile", choices=tuple(PROMPT_PROFILES), required=True)
+    evaluate.add_argument("--output", type=Path, required=True)
+    evaluate.add_argument("--overwrite", action="store_true")
     for command_name in ("check", "train"):
         command = commands.add_parser(
             command_name,
@@ -96,6 +105,20 @@ def _load_records(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.training_command == "evaluate":
+        try:
+            evaluation = run_evaluation(
+                cases_path=cast(Path, args.cases),
+                model_name=cast(str, args.model),
+                adapter_path=cast(Path | None, args.adapter),
+                prompt_profile=cast(str, args.prompt_profile),
+                output_path=cast(Path, args.output),
+                overwrite=cast(bool, args.overwrite),
+            )
+        except (OSError, RuntimeError, ValueError) as error:
+            parser.error(str(error))
+        print(json.dumps(evaluation.model_dump(mode="json"), ensure_ascii=False, indent=2))
+        return 0
     if args.training_command in {"check", "train"}:
         try:
             config = load_training_config(cast(Path, args.config))

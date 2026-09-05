@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "click-browser",
+      "canvas": [640, 360],
+      "instruction": "Open the Browser application.",
+      "plan_keywords": ["browser", "open"],
+      "elements": [
+        {"label": "Browser", "box": [40, 80, 180, 140], "fill": "#DCEBFF"},
+        {"label": "Files", "box": [230, 80, 350, 140], "fill": "#F2F2F2"}
+      ],
+      "expected_action": {"kind": "click", "x": 172, "y": 306, "button": "left", "clicks": 1},
+      "target_box": [63, 223, 281, 390]
+    },
+    {
+      "id": "click-files",
+      "canvas": [640, 360],
+      "instruction": "Open the Files application.",
+      "plan_keywords": ["files", "open"],
+      "elements": [
+        {"label": "Browser", "box": [40, 80, 180, 140], "fill": "#F2F2F2"},
+        {"label": "Files", "box": [230, 80, 350, 140], "fill": "#DCEBFF"}
+      ],
+      "expected_action": {"kind": "click", "x": 454, "y": 306, "button": "left", "clicks": 1},
+      "target_box": [360, 223, 548, 390]
+    },
+    {
+      "id": "type-search",
+      "canvas": [640, 360],
+      "instruction": "Type GUI agents into the focused Search field.",
+      "plan_keywords": ["type", "search"],
+      "elements": [
+        {"label": "Search (focused)", "box": [70, 90, 570, 150], "fill": "#FFFFFF"},
+        {"label": "Cursor active", "box": [75, 165, 220, 205], "fill": "#E8F5E9"}
+      ],
+      "expected_action": {"kind": "type_text", "text": "GUI agents"},
+      "target_box": null
+    },
+    {
+      "id": "select-all",
+      "canvas": [640, 360],
+      "instruction": "Select all text in the focused editor using the keyboard shortcut.",
+      "plan_keywords": ["select", "keyboard"],
+      "elements": [
+        {"label": "Editor (focused)", "box": [60, 70, 580, 260], "fill": "#FFFFFF"},
+        {"label": "draft text", "box": [90, 110, 260, 150], "fill": "#FFFDE7"}
+      ],
+      "expected_action": {"kind": "hotkey", "keys": ["ctrl", "a"]},
+      "target_box": null
+    },
+    {
+      "id": "scroll-document",
+      "canvas": [640, 360],
+      "instruction": "Scroll down in the visible document to read the next section.",
+      "plan_keywords": ["scroll", "document"],
+      "elements": [
+        {"label": "Document", "box": [50, 50, 590, 300], "fill": "#FFFFFF"},
+        {"label": "More content below", "box": [180, 260, 440, 295], "fill": "#E3F2FD"}
+      ],
+      "expected_action": {"kind": "scroll", "clicks": -3, "x": null, "y": null},
+      "target_box": null
+    }
+  ]
+}
