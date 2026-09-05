@@ -28,6 +28,8 @@ data/
 external/
 models/
 checkpoints/
+wandb/
+runs/
 .cache/huggingface/
 .EasyOCR/
 *.pth

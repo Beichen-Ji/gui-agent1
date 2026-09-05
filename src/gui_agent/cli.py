@@ -56,6 +56,7 @@ class RunConfig:
     execute: bool
     allow_remote_image: bool
     trace_dir: Path | None
+    adapter_path: Path | None
     api_base: str | None = None
     api_key: str | None = field(default=None, repr=False)
     fake_actions: tuple[AgentAction, ...] = ()
@@ -149,6 +150,11 @@ def build_parser() -> argparse.ArgumentParser:
         add_help=False,
         help="Run a synthetic one-shot model check",
     )
+    subparsers.add_parser(
+        "training",
+        add_help=False,
+        help="Build data, train, and evaluate the Week 5 adapter",
+    )
 
     run = subparsers.add_parser("run", help="Run the bounded GUI agent loop")
     task_group = run.add_mutually_exclusive_group(required=True)
@@ -178,6 +184,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--execute", action="store_true")
     run.add_argument("--allow-remote-image", action="store_true")
     run.add_argument("--trace-dir", type=Path)
+    run.add_argument(
+        "--adapter",
+        type=Path,
+        help="validated Week 5 QLoRA output or adapter directory (Qwen only)",
+    )
     return parser
 
 
@@ -191,6 +202,12 @@ def _model_smoke_main(argv: Sequence[str]) -> int:
     from gui_agent.agent.smoke import main as model_smoke_main
 
     return model_smoke_main(argv)
+
+
+def _training_main(argv: Sequence[str]) -> int:
+    from gui_agent.training.cli import main as training_main
+
+    return training_main(argv)
 
 
 class _SyntheticObserver:
@@ -256,7 +273,10 @@ def build_runtime(config: RunConfig, input_fn: InputFunction) -> GUIAgent:
             min_confidence=0.5,
         )
         if config.provider == "qwen":
-            planner = QwenTransformersPlanner(model_name=config.model)
+            planner = QwenTransformersPlanner(
+                model_name=config.model,
+                adapter_path=config.adapter_path,
+            )
         else:
             planner = LangChainPlanner(
                 model_name=config.model,
@@ -310,10 +330,14 @@ def main(
         return _dataset_main(remainder)
     if args.command == "model-smoke":
         return _model_smoke_main(remainder)
+    if args.command == "training":
+        return _training_main(remainder)
     if remainder:
         parser.error(f"unrecognized arguments: {' '.join(remainder)}")
     if args.provider == "openai-compatible" and not args.allow_remote_image:
         parser.error("openai-compatible provider requires --allow-remote-image")
+    if args.adapter is not None and args.provider != "qwen":
+        parser.error("--adapter is supported only with --provider qwen")
 
     raw_region = cast(list[int] | None, args.region)
     if raw_region is None:
@@ -351,6 +375,7 @@ def main(
         execute=cast(bool, args.execute),
         allow_remote_image=cast(bool, args.allow_remote_image),
         trace_dir=cast(Path | None, args.trace_dir),
+        adapter_path=cast(Path | None, args.adapter),
         api_base=cast(str | None, args.api_base),
         api_key=cast(str | None, args.api_key),
         fake_actions=configured_actions,

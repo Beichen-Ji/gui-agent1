@@ -142,6 +142,23 @@ uv run pytest -m integration tests/integration/test_local_qwen.py -v -s
 
 测试只使用 640×360 合成界面，输出加载时间、计划/动作推理时间和 PyTorch 峰值分配显存，不读取真实屏幕。
 
+### 4.4 加载 Week 5 LoRA adapter
+
+`--adapter` 接受 `training train/check` 的输出目录，或其中的 `adapter/` 子目录。例如：
+
+```powershell
+uv run --no-sync gui-agent run `
+  --task-id open-browser `
+  --provider qwen `
+  --adapter artifacts/week5/qwen3vl-gui-lora `
+  --max-steps 8
+```
+
+Planner 会在加载权重前检查 `run-manifest.json`、adapter 文件哈希、基础模型、1000
+坐标网格和 prompt profile。未传 `--adapter` 时仍使用 Week 4 基础模型和
+`week4-baseline` prompt；adapter 路径只支持本地 Qwen provider。adapter 不包含密钥，
+也不会绕过 dry-run、安全策略或逐动作确认。
+
 ## 5. 运行 OpenAI-compatible Provider
 
 `.env.example` 只是字段模板，项目不会自动读取 `.env`。推荐在当前 PowerShell 会话或系统密钥管理器中设置：

@@ -124,6 +124,23 @@ wheels = [
 ]
 
 [[package]]
+name = "bitsandbytes"
+version = "0.50.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "torch" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/55/bf/5290208ce1ecf0f2e6a916fc72a75f6e68021ecfd69e7014fc95998532eb/bitsandbytes-0.50.2-py3-none-macosx_14_0_arm64.whl", hash = "sha256:4311f52a880b341bada639e4edd1a3c8d786830c9c93cdde29eaa1f062c8f8e5", size = 123541, upload-time = "2026-08-27T00:10:48.726Z" },
+    { url = "https://files.pythonhosted.org/packages/88/d5/b2cb5b5a9daf7349a02b1af2c49b6a044fda2702c9cc5dc296f648358327/bitsandbytes-0.50.2-py3-none-manylinux_2_24_aarch64.whl", hash = "sha256:d5772560dd94c4d9c57f50c9b017450a1707f7687bfd4b3dc86f7342aafe721e", size = 23777467, upload-time = "2026-08-27T00:10:50.92Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/6e/e4e8b75716dbe5e50964f070266e06f4e6806ce051bfb97f52ee162b9310/bitsandbytes-0.50.2-py3-none-manylinux_2_24_x86_64.whl", hash = "sha256:55348a9a4a21bfd99cf8c7b32fe67b4030ae5c2a05738e03c1747f65fa6ec283", size = 43139553, upload-time = "2026-08-27T00:10:54.751Z" },
+    { url = "https://files.pythonhosted.org/packages/72/82/742dc27a1feab90c8f87f2ed14e6d72d05f9e1cf764b4d2ba30aa9b4a2cb/bitsandbytes-0.50.2-py3-none-win_amd64.whl", hash = "sha256:c697963c8fda3dcd0d7ebd9b5211ae4067feef7cd06e0350d4e816a434fe683d", size = 39096375, upload-time = "2026-08-27T00:10:58.297Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/57/61636c5b11b0a32e505127a6dce6fa8fcbf73978babe8fa37082ab547f1c/bitsandbytes-0.50.2-py3-none-win_arm64.whl", hash = "sha256:8437ab68a04ea56daf1d6ecb54230fb1d88be4b89fe2d79bc399bc0203b487cf", size = 1058684, upload-time = "2026-08-27T00:11:00.664Z" },
+]
+
+[[package]]
 name = "certifi"
 version = "2026.7.22"
 source = { registry = "https://pypi.org/simple" }
@@ -437,6 +454,16 @@ ocr = [
     { name = "torch" },
     { name = "torchvision" },
 ]
+training = [
+    { name = "accelerate" },
+    { name = "bitsandbytes" },
+    { name = "pandas" },
+    { name = "peft" },
+    { name = "pydantic" },
+    { name = "safetensors" },
+    { name = "torch" },
+    { name = "transformers" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -449,6 +476,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "accelerate", marker = "extra == 'local-model'", specifier = ">=1,<2" },
+    { name = "accelerate", marker = "extra == 'training'", specifier = ">=1,<2" },
+    { name = "bitsandbytes", marker = "extra == 'training'", specifier = ">=0.47,<1" },
     { name = "datasets", marker = "extra == 'datasets'", specifier = ">=4,<5" },
     { name = "easyocr", marker = "extra == 'ocr'", specifier = ">=1.7.2,<2" },
     { name = "langchain", marker = "extra == 'agent'", specifier = ">=1,<2" },
@@ -456,16 +485,22 @@ requires-dist = [
     { name = "mss", specifier = ">=10.1,<11" },
     { name = "numpy", specifier = ">=2,<3" },
     { name = "opencv-python-headless", specifier = ">=4.11,<5" },
+    { name = "pandas", marker = "extra == 'training'", specifier = ">=2.2,<4" },
+    { name = "peft", marker = "extra == 'training'", specifier = ">=0.17,<1" },
     { name = "pillow", specifier = ">=11,<13" },
     { name = "pyautogui", specifier = ">=0.9.54,<1" },
     { name = "pydantic", marker = "extra == 'agent'", specifier = ">=2,<3" },
+    { name = "pydantic", marker = "extra == 'training'", specifier = ">=2,<3" },
     { name = "pynput", specifier = ">=1.8,<2" },
     { name = "safetensors", marker = "extra == 'local-model'", specifier = ">=0.6,<1" },
+    { name = "safetensors", marker = "extra == 'training'", specifier = ">=0.6,<1" },
     { name = "torch", marker = "extra == 'ocr'", specifier = ">=2.7,<3", index = "https://download.pytorch.org/whl/cu128" },
+    { name = "torch", marker = "extra == 'training'", specifier = ">=2.7,<3", index = "https://download.pytorch.org/whl/cu128" },
     { name = "torchvision", marker = "extra == 'ocr'", specifier = ">=0.22,<1", index = "https://download.pytorch.org/whl/cu128" },
     { name = "transformers", marker = "extra == 'local-model'", specifier = ">=5,<6" },
+    { name = "transformers", marker = "extra == 'training'", specifier = ">=5,<6" },
 ]
-provides-extras = ["agent", "datasets", "local-model", "ocr"]
+provides-extras = ["agent", "datasets", "local-model", "training", "ocr"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1311,6 +1346,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5a/82/42f767fc1c1143d6fd36efb827202a2d997a375e160a71eb2888a925aac1/pathspec-1.1.1.tar.gz", hash = "sha256:17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a", size = 135180, upload-time = "2026-04-27T01:46:08.907Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl", hash = "sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189", size = 57328, upload-time = "2026-04-27T01:46:07.06Z" },
+]
+
+[[package]]
+name = "peft"
+version = "0.20.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "accelerate" },
+    { name = "huggingface-hub" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "psutil" },
+    { name = "pyyaml" },
+    { name = "safetensors" },
+    { name = "torch" },
+    { name = "tqdm" },
+    { name = "transformers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b4/08/02541a2c29be7c78698f73d438bc0e733b214f3f35ec5db79fca8da8fc61/peft-0.20.0.tar.gz", hash = "sha256:4769c8093a4ca145fd6fb3fd4dd50449675f5fe46434ad1e98b285a132d4b1d0", size = 880503, upload-time = "2026-07-28T13:46:01.85Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/28/79/13bcabb8048126422d5c4b880575d40886c726f354db88cfeed4325525bb/peft-0.20.0-py3-none-any.whl", hash = "sha256:0fbba16ffebfad3de96e06f2da6860fd860292324b85b6141909fa1e26ea9233", size = 775777, upload-time = "2026-07-28T13:45:59.809Z" },
 ]
 
 [[package]]

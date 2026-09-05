@@ -1,33 +1,39 @@
+import hashlib
 import json
 from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, TypeVar, cast
 
 from PIL import Image
 from pydantic import BaseModel
 
+from gui_agent.agent.coordinates import action_from_grid
 from gui_agent.agent.planner import PlannerError
-from gui_agent.agent.prompts import build_action_prompt, build_plan_prompt
+from gui_agent.agent.prompts import (
+    PromptProfile,
+    build_action_prompt,
+    build_plan_prompt,
+    get_prompt_profile,
+)
 from gui_agent.agent.types import (
     AgentAction,
     AgentDecision,
     AgentState,
-    ClickAction,
-    DragAction,
     Observation,
-    ScrollAction,
     TaskPlan,
 )
+from gui_agent.types import ScreenRegion
 
 DEFAULT_QWEN_MODEL = "Qwen/Qwen3-VL-4B-Instruct"
-QWEN_COORDINATE_GRID_SIZE = 1000
 ModelSchema = TypeVar("ModelSchema", bound=BaseModel)
+AdapterLoader = Callable[[object, Path], object]
 
-_QWEN_COORDINATE_INSTRUCTION = (
-    "For click, scroll, and drag actions, return image-relative integer coordinates "
-    "on a 1000x1000 grid. (0,0) is the image's top-left pixel and (999,999) "
-    "is its bottom-right pixel. Do not add the desktop origin; the application "
-    "converts these coordinates to absolute desktop pixels."
-)
+
+@dataclass(frozen=True, slots=True)
+class _AdapterSpec:
+    adapter_dir: Path
+    prompt_profile: PromptProfile
 
 
 def _default_processor_loader(model_name: str, **kwargs: object) -> object:
@@ -43,6 +49,80 @@ def _default_model_loader(model_name: str, **kwargs: object) -> object:
     return AutoModelForMultimodalLM.from_pretrained(model_name, **kwargs)
 
 
+def _default_adapter_loader(model: object, adapter_dir: Path) -> object:
+    from peft import PeftModel
+
+    loader = cast(Callable[..., object], PeftModel.from_pretrained)
+    return loader(model, adapter_dir, is_trainable=False)
+
+
+def _read_json_object(path: Path, *, label: str) -> dict[str, object]:
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"could not read {label}: {path}") from error
+    if not isinstance(value, dict):
+        raise ValueError(f"{label} must contain a JSON object: {path}")
+    return cast(dict[str, object], value)
+
+
+def _validated_adapter(
+    adapter_path: Path,
+    *,
+    model_name: str,
+    requested_profile: str | PromptProfile | None,
+) -> _AdapterSpec:
+    resolved = adapter_path.resolve()
+    if not resolved.is_dir():
+        raise ValueError(f"adapter path is not a directory: {adapter_path}")
+    if (resolved / "run-manifest.json").is_file():
+        output_root = resolved
+        adapter_dir = output_root / "adapter"
+    elif resolved.name == "adapter" and (resolved.parent / "run-manifest.json").is_file():
+        output_root = resolved.parent
+        adapter_dir = resolved
+    else:
+        raise ValueError("adapter path requires a sibling or child run-manifest.json")
+    manifest = _read_json_object(
+        output_root / "run-manifest.json",
+        label="adapter run manifest",
+    )
+    if manifest.get("kind") != "gui-agent-week5-training-run":
+        raise ValueError("adapter run manifest has an unsupported kind")
+    if manifest.get("base_model") != model_name:
+        raise ValueError("adapter base model does not match the requested model")
+    if manifest.get("coordinate_grid_size") != 1000:
+        raise ValueError("adapter coordinate grid does not match the Qwen runtime")
+    manifest_profile = manifest.get("prompt_profile")
+    if not isinstance(manifest_profile, str):
+        raise ValueError("adapter run manifest has no prompt profile")
+    selected_profile = get_prompt_profile(manifest_profile)
+    if requested_profile is not None:
+        requested = get_prompt_profile(requested_profile)
+        if requested.id != selected_profile.id:
+            raise ValueError("adapter prompt profile does not match the requested profile")
+
+    adapter_config = _read_json_object(
+        adapter_dir / "adapter_config.json",
+        label="adapter config",
+    )
+    if adapter_config.get("base_model_name_or_path") != model_name:
+        raise ValueError("adapter config base model does not match the requested model")
+    raw_hashes = manifest.get("output_sha256")
+    if not isinstance(raw_hashes, dict):
+        raise ValueError("adapter run manifest has no output hashes")
+    for filename in ("adapter_model.safetensors", "adapter_config.json"):
+        path = adapter_dir / filename
+        try:
+            actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError as error:
+            raise ValueError(f"adapter file is missing: {path}") from error
+        expected = raw_hashes.get(f"adapter/{filename}")
+        if expected != actual:
+            raise ValueError(f"adapter file hash mismatch: {filename}")
+    return _AdapterSpec(adapter_dir=adapter_dir, prompt_profile=selected_profile)
+
+
 def _json_object(text: str) -> str:
     stripped = text.strip()
     start = stripped.find("{")
@@ -52,81 +132,15 @@ def _json_object(text: str) -> str:
     return stripped[start : end + 1]
 
 
-def _desktop_coordinate(value: int, *, origin: int, extent: int) -> int:
-    if not 0 <= value < QWEN_COORDINATE_GRID_SIZE:
-        raise ValueError("Qwen pointer coordinates must be between 0 and 999")
-    return origin + (value * extent) // QWEN_COORDINATE_GRID_SIZE
-
-
 def _desktop_action(action: AgentAction, observation: Observation) -> AgentAction:
     screenshot = observation.screenshot
-    origin = screenshot.origin
-
-    if isinstance(action, ClickAction):
-        return action.model_copy(
-            update={
-                "x": _desktop_coordinate(
-                    action.x,
-                    origin=origin.x,
-                    extent=screenshot.width,
-                ),
-                "y": _desktop_coordinate(
-                    action.y,
-                    origin=origin.y,
-                    extent=screenshot.height,
-                ),
-            }
-        )
-
-    if isinstance(action, ScrollAction):
-        if action.x is None:
-            if action.y is None:
-                return action
-            raise ValueError("scroll x and y must be provided together")
-        if action.y is None:
-            raise ValueError("scroll x and y must be provided together")
-        return action.model_copy(
-            update={
-                "x": _desktop_coordinate(
-                    action.x,
-                    origin=origin.x,
-                    extent=screenshot.width,
-                ),
-                "y": _desktop_coordinate(
-                    action.y,
-                    origin=origin.y,
-                    extent=screenshot.height,
-                ),
-            }
-        )
-
-    if isinstance(action, DragAction):
-        return action.model_copy(
-            update={
-                "start_x": _desktop_coordinate(
-                    action.start_x,
-                    origin=origin.x,
-                    extent=screenshot.width,
-                ),
-                "start_y": _desktop_coordinate(
-                    action.start_y,
-                    origin=origin.y,
-                    extent=screenshot.height,
-                ),
-                "end_x": _desktop_coordinate(
-                    action.end_x,
-                    origin=origin.x,
-                    extent=screenshot.width,
-                ),
-                "end_y": _desktop_coordinate(
-                    action.end_y,
-                    origin=origin.y,
-                    extent=screenshot.height,
-                ),
-            }
-        )
-
-    return action
+    bounds = ScreenRegion(
+        screenshot.origin.x,
+        screenshot.origin.y,
+        screenshot.width,
+        screenshot.height,
+    )
+    return action_from_grid(action, bounds=bounds)
 
 
 def _desktop_decision(
@@ -150,6 +164,9 @@ class QwenTransformersPlanner:
         model_dtype: object | None = None,
         max_image_side: int = 1280,
         max_new_tokens: int = 512,
+        prompt_profile: str | PromptProfile | None = None,
+        adapter_path: Path | None = None,
+        adapter_loader: AdapterLoader = _default_adapter_loader,
     ) -> None:
         if not model_name.strip():
             raise ValueError("model_name must not be blank")
@@ -167,6 +184,22 @@ class QwenTransformersPlanner:
         self._model_dtype = model_dtype
         self._max_image_side = max_image_side
         self._max_new_tokens = max_new_tokens
+        self._adapter = (
+            _validated_adapter(
+                adapter_path,
+                model_name=model_name,
+                requested_profile=prompt_profile,
+            )
+            if adapter_path is not None
+            else None
+        )
+        self._prompt_profile = (
+            self._adapter.prompt_profile
+            if self._adapter is not None
+            else get_prompt_profile(prompt_profile or "week4-baseline")
+        )
+        self._adapter_loader = adapter_loader
+        self._adapter_loaded = False
 
     def _ensure_loaded(self) -> tuple[Any, Any]:
         if self._processor is None or self._model is None:
@@ -185,6 +218,17 @@ class QwenTransformersPlanner:
                 )
             except Exception as exc:
                 raise PlannerError(f"could not load local model {self.model_name}") from exc
+        if self._adapter is not None and not self._adapter_loaded:
+            try:
+                self._model = self._adapter_loader(
+                    self._model,
+                    self._adapter.adapter_dir,
+                )
+                self._adapter_loaded = True
+            except Exception as exc:
+                raise PlannerError(
+                    f"could not load LoRA adapter {self._adapter.adapter_dir}"
+                ) from exc
         return cast(Any, self._processor), cast(Any, self._model)
 
     def _image(self, observation: Observation) -> Image.Image:
@@ -210,9 +254,18 @@ class QwenTransformersPlanner:
             separators=(",", ":"),
         )
         coordinate_instruction = (
-            f"\n{_QWEN_COORDINATE_INSTRUCTION}" if schema is AgentDecision else ""
+            f"\n{self._prompt_profile.coordinate_instruction}"
+            if schema is AgentDecision
+            else ""
         )
         messages = [
+            {
+                "role": "system",
+                "content": (
+                    f"{self._prompt_profile.system_prompt}\n"
+                    f"Prompt profile: {self._prompt_profile.id}."
+                ),
+            },
             {
                 "role": "user",
                 "content": [
@@ -256,12 +309,16 @@ class QwenTransformersPlanner:
             raise PlannerError(f"local model failed to produce {schema.__name__}") from exc
 
     def create_plan(self, goal: str, observation: Observation) -> TaskPlan:
-        return self._invoke(TaskPlan, build_plan_prompt(goal, observation), observation)
+        return self._invoke(
+            TaskPlan,
+            build_plan_prompt(goal, observation, profile=self._prompt_profile),
+            observation,
+        )
 
     def next_action(self, state: AgentState) -> AgentDecision:
         return self._invoke(
             AgentDecision,
-            build_action_prompt(state),
+            build_action_prompt(state, profile=self._prompt_profile),
             state.observation,
         )
 

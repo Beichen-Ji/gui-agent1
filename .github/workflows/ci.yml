@@ -32,8 +32,8 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
 
-      - name: Install base, development, and agent dependencies
-        run: uv sync --locked --group dev --extra agent
+      - name: Install base, development, agent, and training dependencies
+        run: uv sync --locked --group dev --extra agent --extra training
 
       - name: Lint
         run: uv run ruff check .
