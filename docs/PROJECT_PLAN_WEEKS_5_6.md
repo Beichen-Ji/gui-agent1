@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: 使用 `superpowers:subagent-driven-development`（推荐）或 `superpowers:executing-plans` 按 Task 顺序执行；每个功能先使用 `superpowers:test-driven-development`，提交或创建 PR 前使用 `superpowers:verification-before-completion`。
 
-**状态：** 用户已批准，Week 5 已合并，正在执行 Week 6；进度以本文复选框和 Git 提交为准。
+**状态：** Week 6 自动开发与验收已推送 Draft PR；真实桌面 live 记录等待用户在场完成。进度以本文复选框和 Git 提交为准。
 
 **任务分类：** 架构级扩展。第 5 周会新增训练与评估子系统，第 6 周会调整 Agent 循环、感知和日志边界，因此分成两个独立分支与 PR，不能在 Week 4 的未完成分支上直接叠加。
 
@@ -980,7 +980,7 @@ git ls-files data artifacts models checkpoints .env
 
 Week 6 验收标准：复杂任务按显式 progress 分步推进；可恢复错误能在限制内恢复；不可恢复/安全错误不 retry；不会重复执行完全相同动作；感知 benchmark 有基线和选择依据；每次 run 都有实时状态和完整脱敏事件；普通测试不访问真实桌面/网络/模型。
 
-- [ ] **Step 6: 推送 Draft PR**
+- [x] **Step 6: 推送 Draft PR**
 
 ```powershell
 git add configs/week6_robustness_tasks.json tests/integration/test_week6_robustness.py examples/gui_testbed.py docs/test-reports/week6-robustness-report.md README.md
@@ -989,6 +989,8 @@ git push -u origin codex/week6-robust-agent-v2
 gh pr create --draft --base master --head codex/week6-robust-agent-v2 `
   --title "feat: deliver robust Week 6 GUI agent v2"
 ```
+
+执行记录（2026-09-05）：404 项普通测试通过、10 项 integration deselected、覆盖率 87%；8 项固定故障注入测试通过；锁文件、Ruff、mypy（89 个 source files）和 diff 检查通过。代码与报告已推送至 Draft PR [#6](https://github.com/Beichen-Ji/gui-agent1/pull/6)。Task 12 Step 3b 的真实桌面 live 记录仍待用户在场完成，不计为当前自动验收通过。
 
 CI 与人工审阅通过并合并后，再创建 `v0.6.0-week6` 标签。adapter 若需发布为 Release 附件，必须先核对 SHA-256、基础模型许可、数据许可和文件大小，并单独获得用户确认。
 
