@@ -19,6 +19,7 @@ from gui_agent.simulation.harness import (
     SimulatedObservationSource,
     SimulationPolicy,
 )
+from gui_agent.simulation.render import layout_desktop
 from gui_agent.simulation.state import TestbedState
 from gui_agent.types import BoundingBox, OCRDetection, Point
 
@@ -57,9 +58,9 @@ def test_oracle_observation_uses_rendered_ground_truth_boxes(tmp_path: Path) -> 
     assert observation.step_index == 3
     assert observation.screenshot.origin == Point(0, 0)
     assert observation.screenshot.image.shape == (720, 1280, 3)
-    assert {detection.text for detection in observation.detections} == set(
-        desktop.hitboxes
-    )
+    assert {detection.text for detection in observation.detections} == {
+        control.label for control in layout_desktop(desktop.state, desktop.canvas)
+    }
     assert {detection.box for detection in observation.detections} == set(
         desktop.hitboxes.values()
     )

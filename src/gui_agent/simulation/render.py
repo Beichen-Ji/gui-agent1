@@ -41,6 +41,10 @@ def _display_label(state: TestbedState, control: ControlDefinition) -> str:
         "browser.address": state.text_value("browser.address") or control.label,
         "browser.search": state.text_value("browser.search") or control.label,
         "browser.result": state.search_result or control.label,
+        "browser.web_tab": "Web (selected)" if state.browser_tab == "web" else "Web",
+        "browser.history_tab": (
+            "History (selected)" if state.browser_tab == "history" else "History"
+        ),
         "files.filename": state.text_value("files.filename") or control.label,
         "files.list": f"Files\n{DEMO_LIST_ENTRY}",
         "files.content": state.file_content or control.label,
@@ -52,6 +56,7 @@ def _display_label(state: TestbedState, control: ControlDefinition) -> str:
         "settings.checkbox": f"[{'x' if state.settings_enabled else ' '}] Enable feature",
         "settings.theme": f"Theme: {state.settings_theme}",
         "settings.volume": f"Volume: {round(state.settings_volume * 100)}%",
+        "settings.save_button": "Saved" if state.settings_saved else "Save",
         "editor.text": state.editor_text or control.label,
         "editor.find": state.editor_find or control.label,
         "editor.status": "Saved" if state.editor_saved else control.label,

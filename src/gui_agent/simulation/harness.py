@@ -18,7 +18,7 @@ from gui_agent.agent.types import (
     WaitAction,
 )
 from gui_agent.perception.ocr import OCRBackend
-from gui_agent.simulation.render import render_desktop
+from gui_agent.simulation.render import layout_desktop, render_desktop
 from gui_agent.simulation.state import TestbedState
 from gui_agent.types import (
     BoundingBox,
@@ -93,9 +93,10 @@ class SimulatedObservationSource:
             origin=Point(0, 0),
         )
         if self._mode == "oracle":
+            layout = layout_desktop(self._desktop.state, self._desktop.canvas)
             detections = tuple(
-                OCRDetection(text=control_id, confidence=1.0, box=box)
-                for control_id, box in self._desktop.hitboxes.items()
+                OCRDetection(text=control.label, confidence=1.0, box=control.box)
+                for control in layout
             )
         else:
             assert self._ocr is not None

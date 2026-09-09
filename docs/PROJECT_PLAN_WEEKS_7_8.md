@@ -376,13 +376,13 @@ git commit -m "feat: run the agent loop against the simulated desktop"
 
 **Produces:** 20 项任务，覆盖 5 类应用 × 3 个难度，每项都有可被现有验证器判定的确定性成功条件。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 覆盖：schema 校验（ID 唯一、难度枚举、应用枚举、`max_steps` 上界）；**难度与应用分布断言**（5 应用各 4 项；easy 8 / medium 7 / hard 5）；成功条件必须包含单引号引用文本（`RuleBasedOutcomeVerifier` 只认引号内文本，无引用文本会被判 `expected_text_missing`）；**每项任务都能被脚本化的 oracle 解法在 `max_steps` 内走通**。
 
 最后一条是整个 Week 7 的地基：它证明任务集本身可解，因此模型 0% 命中意味着模型不行，而不是任务集设计错误。
 
-- [ ] **Step 2: 任务 schema**
+- [x] **Step 2: 任务 schema**
 
 ```python
 class EvaluationTask(_StrictFrozenModel):
@@ -398,7 +398,7 @@ class EvaluationTask(_StrictFrozenModel):
     tags: tuple[str, ...] = ()
 ```
 
-- [ ] **Step 3: 20 项任务分布**
+- [x] **Step 3: 20 项任务分布**
 
 | 难度 | 数量 | 特征 | 示例 |
 |---|---:|---|---|
@@ -408,7 +408,7 @@ class EvaluationTask(_StrictFrozenModel):
 
 每类应用 4 项，横跨难度。hard 任务刻意触发 Week 6 的 retry / replan / wait 路径，让鲁棒性机制在评估中被真正行使。
 
-- [ ] **Step 4: GREEN 与提交**
+- [x] **Step 4: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_evaluation_suite.py -v --basetemp artifacts/pytest-week7-t3
