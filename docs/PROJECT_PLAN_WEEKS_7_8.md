@@ -268,7 +268,7 @@ git worktree add .worktrees/week7-system-evaluation -b codex/week7-system-evalua
 
 **Produces:** 一个与 Tk 完全解耦、可在任意画布尺寸下确定性渲染的 5 应用模拟桌面。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 覆盖：每类应用的状态迁移与非法输入拒绝；文件操作不越出 sandbox root；同一状态 + 同一画布尺寸渲染出**逐字节相同**的图像；不同画布尺寸下控件命中框按比例缩放且互不重叠；控件文字在最小画布下仍完整可见（不被裁切）。
 
@@ -276,11 +276,11 @@ git worktree add .worktrees/week7-system-evaluation -b codex/week7-system-evalua
 uv run pytest tests/test_simulation_state.py tests/test_simulation_render.py -v --basetemp artifacts/pytest-week7-t1
 ```
 
-- [ ] **Step 2: 迁移纯状态机**
+- [x] **Step 2: 迁移纯状态机**
 
 把 `examples/gui_testbed.py` 的 `TestbedState` 移到 `src/gui_agent/simulation/state.py`，保留 `fault_profile`（`none` / `transient` / `delayed`）语义与 `snapshot()`。`examples/gui_testbed.py` 只保留 `TestbedApp` 这层 Tk 外壳并从新包导入，Week 6 的手动 testbed 用法保持不变。
 
-- [ ] **Step 3: 扩展到 5 类应用原型**
+- [x] **Step 3: 扩展到 5 类应用原型**
 
 在 `apps.py` 中声明式定义控件（`id`、`role`、相对坐标 `0.0-1.0`、标签、可交互性）：
 
@@ -294,7 +294,7 @@ uv run pytest tests/test_simulation_state.py tests/test_simulation_render.py -v 
 
 相对坐标是跨分辨率的关键：渲染时乘以画布尺寸取整，因此同一任务在三种分辨率下语义完全一致。
 
-- [ ] **Step 4: 确定性渲染器**
+- [x] **Step 4: 确定性渲染器**
 
 `render.py` 用 Pillow 绘制并转为 `uint8` BGR `ImageArray`（与 `training/evaluation.py:_render_case` 同一套路，但支持任意尺寸和多控件）。要求：
 
@@ -302,7 +302,7 @@ uv run pytest tests/test_simulation_state.py tests/test_simulation_render.py -v 
 - 返回 `(image, hitboxes)`，`hitboxes` 为 `dict[str, BoundingBox]`（绝对像素）；
 - 字号随画布尺寸线性缩放，保证 1280×720 下 OCR 仍可读。
 
-- [ ] **Step 5: GREEN 与提交**
+- [x] **Step 5: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_simulation_state.py tests/test_simulation_render.py tests/test_examples.py -v --basetemp artifacts/pytest-week7-t1

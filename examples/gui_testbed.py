@@ -3,95 +3,15 @@ import tkinter as tk
 from collections.abc import Sequence
 from pathlib import Path
 from tkinter import ttk
-from typing import Any, Literal, cast
+from typing import Any, cast
+
+from gui_agent.simulation.state import (
+    DEMO_FILENAME,
+    FAULT_PROFILES,
+    TestbedState,
+)
 
 DEFAULT_TESTBED_ROOT = Path(__file__).resolve().parents[1] / "artifacts" / "testbed"
-DEMO_FILENAME = "week4-demo.txt"
-DEMO_CONTENT = "WEEK4_DEMO_READY\nThis file belongs to the local Week 4 GUI testbed.\n"
-FaultProfile = Literal["none", "transient", "delayed"]
-FAULT_PROFILES: tuple[FaultProfile, ...] = ("none", "transient", "delayed")
-
-
-class TestbedState:
-    """Pure local state for the Browser, Files, and Messages test areas."""
-
-    def __init__(self, root: Path, *, fault_profile: FaultProfile = "none") -> None:
-        if fault_profile not in FAULT_PROFILES:
-            raise ValueError(f"unknown fault profile: {fault_profile}")
-        self.root = root.resolve()
-        self.root.mkdir(parents=True, exist_ok=True)
-        demo = self.root / DEMO_FILENAME
-        if not demo.exists():
-            demo.write_text(DEMO_CONTENT, encoding="utf-8")
-        self.browser_open = False
-        self.search_query: str | None = None
-        self.search_result: str | None = None
-        self.opened_file: str | None = None
-        self.file_content: str | None = None
-        self.messages: list[str] = []
-        self.closed = False
-        self.fault_profile = fault_profile
-        self.faults_triggered = 0
-        self._transient_search_ignored = False
-
-    def open_browser(self) -> None:
-        self.browser_open = True
-
-    def search(self, query: str) -> str:
-        normalized = query.strip()
-        if not normalized or len(normalized) > 200:
-            raise ValueError("search query must contain 1 to 200 characters")
-        self.open_browser()
-        self.search_query = normalized
-        if self.fault_profile == "transient" and not self._transient_search_ignored:
-            self._transient_search_ignored = True
-            self.faults_triggered += 1
-            self.search_result = "Search result: transient action ignored"
-            return self.search_result
-        if self.fault_profile == "delayed":
-            self.faults_triggered += 1
-            self.search_result = "Search result: pending"
-            return self.search_result
-        self.search_result = f"Search result: {normalized}"
-        return self.search_result
-
-    def complete_delayed_search(self) -> str:
-        if self.fault_profile != "delayed" or self.search_query is None:
-            raise ValueError("no delayed search is pending")
-        self.search_result = f"Search result: {self.search_query}"
-        return self.search_result
-
-    def open_file(self, filename: str) -> str:
-        candidate = (self.root / filename).resolve()
-        if not candidate.is_relative_to(self.root):
-            raise ValueError("files must stay inside the testbed directory")
-        if not candidate.is_file():
-            raise ValueError(f"testbed file does not exist: {filename}")
-        content = candidate.read_text(encoding="utf-8")
-        self.opened_file = candidate.name
-        self.file_content = content
-        return content
-
-    def send_message(self, text: str) -> None:
-        if not text.strip() or len(text) > 500:
-            raise ValueError("message must contain 1 to 500 characters")
-        self.messages.append(text)
-
-    def close(self) -> None:
-        self.closed = True
-
-    def snapshot(self) -> dict[str, object]:
-        return {
-            "browser_open": self.browser_open,
-            "search_query": self.search_query,
-            "search_result": self.search_result,
-            "opened_file": self.opened_file,
-            "file_content": self.file_content,
-            "messages": tuple(self.messages),
-            "closed": self.closed,
-            "fault_profile": self.fault_profile,
-            "faults_triggered": self.faults_triggered,
-        }
 
 
 class TestbedApp:
