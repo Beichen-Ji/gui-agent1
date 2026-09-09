@@ -40,11 +40,13 @@
       "success_criteria": "The result reads 'Search result: week7 metrics'.",
       "initial_state": {"active_app": "browser"},
       "fault_profile": "transient",
-      "max_steps": 5,
+      "max_steps": 7,
       "reference_actions": [
         {"kind": "click", "x": 531, "y": 281},
         {"kind": "type_text", "text": "week7 metrics"},
         {"kind": "click", "x": 1126, "y": 281},
+        {"kind": "click", "x": 640, "y": 133},
+        {"kind": "click", "x": 531, "y": 281},
         {"kind": "click", "x": 1126, "y": 281},
         {"kind": "finish", "success": true, "summary": "Search recovered"}
       ],

@@ -511,11 +511,11 @@ git commit -m "feat: add the Week 7 evaluation runner and metrics"
 
 **Produces:** `gui-agent evaluate` 子命令与预算受控的运行矩阵。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 覆盖：矩阵展开的笛卡尔积与去重；condition ID 唯一且包含全部区分字段；CLI 参数校验；`--dry-run-plan` 只打印将要执行的运行数与预估耗时而不执行；integration 标记的全套件 fake-planner 冒烟（20 项任务在 fake planner 下全部走通，验证管线本身）。
 
-- [ ] **Step 2: 运行矩阵与预算**
+- [x] **Step 2: 运行矩阵与预算**
 
 | 条件 | 任务 | 分辨率 | 观察模式 | 运行数 | 预估耗时 |
 |---|---:|---|---|---:|---|
@@ -527,7 +527,7 @@ git commit -m "feat: add the Week 7 evaluation runner and metrics"
 
 耗时基于 Week 5 实测的单次推理中位 6.4 s（adapter 条件 10.1 s）与平均每任务约 3 次推理。加载 adapter 的一组按 Week 5 结论预期不会更好，跑它是为了在最终报告中给出**多步任务**上的证据——Week 5 只有单轮证据。
 
-- [ ] **Step 3: CLI**
+- [x] **Step 3: CLI**
 
 ```powershell
 uv run gui-agent evaluate `

@@ -18,6 +18,7 @@ from gui_agent.evaluation.suite import (
     EvaluationTask,
     EvaluationTaskSuite,
     ReferenceSolutionResult,
+    build_reference_planner,
     load_task_suite,
     run_reference_solution,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "TaskOutcome",
     "TimingBreakdown",
     "build_evaluation_report",
+    "build_reference_planner",
     "calculate_suite_metrics",
     "load_evaluation_report",
     "load_task_suite",

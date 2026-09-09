@@ -241,6 +241,10 @@ class TestbedState:
         except KeyError as error:
             raise ValueError(f"control does not contain text: {control_id}") from error
 
+    @property
+    def selection_all(self) -> bool:
+        return self._selection_all
+
     def snapshot(self) -> dict[str, object]:
         return {
             "active_app": self.active_app,

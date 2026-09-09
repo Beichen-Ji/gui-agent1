@@ -17,6 +17,19 @@ from gui_agent.agent.types import (
 from gui_agent.types import ScreenRegion
 
 
+def test_root_cli_forwards_evaluate_arguments(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    def evaluation_probe(argv: list[str]) -> int:
+        calls.append(argv)
+        return 0
+
+    monkeypatch.setattr(cli, "_evaluation_main", evaluation_probe)
+
+    assert cli.main(["evaluate", "--dry-run-plan"]) == 0
+    assert calls == [["--dry-run-plan"]]
+
+
 class RuntimeProbe:
     def __init__(self, result: AgentRunResult) -> None:
         self.result = result
@@ -61,7 +74,7 @@ def test_cli_help_lists_commands_and_run_safety_options(
     assert captured.value.code == 0
     output = capsys.readouterr().out
     if not command:
-        for name in ("dataset", "model-smoke", "run"):
+        for name in ("dataset", "evaluate", "model-smoke", "run"):
             assert name in output
     else:
         for option in (

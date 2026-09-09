@@ -5,7 +5,17 @@ from typing import Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from gui_agent.agent.types import AgentAction, AgentDecision, FinishAction
+from gui_agent.agent.planner import FakePlanner
+from gui_agent.agent.types import (
+    AgentAction,
+    AgentDecision,
+    ClickAction,
+    DragAction,
+    FinishAction,
+    ScrollAction,
+    TaskPlan,
+    TaskStep,
+)
 from gui_agent.agent.verification import RuleBasedOutcomeVerifier
 from gui_agent.simulation.apps import AppId
 from gui_agent.simulation.harness import (
@@ -157,11 +167,72 @@ def run_reference_solution(
     )
 
 
+def _scaled_reference_action(
+    action: AgentAction,
+    canvas: tuple[int, int],
+) -> AgentAction:
+    scale_x = canvas[0] / 1280
+    scale_y = canvas[1] / 720
+    if isinstance(action, ClickAction):
+        return action.model_copy(
+            update={"x": round(action.x * scale_x), "y": round(action.y * scale_y)}
+        )
+    if isinstance(action, ScrollAction) and action.x is not None and action.y is not None:
+        return action.model_copy(
+            update={"x": round(action.x * scale_x), "y": round(action.y * scale_y)}
+        )
+    if isinstance(action, DragAction):
+        return action.model_copy(
+            update={
+                "start_x": round(action.start_x * scale_x),
+                "start_y": round(action.start_y * scale_y),
+                "end_x": round(action.end_x * scale_x),
+                "end_y": round(action.end_y * scale_y),
+            }
+        )
+    return action
+
+
+def build_reference_planner(
+    task: EvaluationTask,
+    *,
+    canvas: tuple[int, int] = (1280, 720),
+) -> FakePlanner:
+    actions = tuple(
+        _scaled_reference_action(action, canvas) for action in task.reference_actions
+    )
+    steps = tuple(
+        TaskStep(
+            id=f"reference-{index + 1}",
+            description=f"Execute reference {action.kind} action",
+        )
+        for index, action in enumerate(actions)
+    )
+    decisions = tuple(
+        AgentDecision(
+            current_step_id=steps[index].id,
+            rationale_summary="Follow the validated deterministic reference solution.",
+            action=action,
+            expected_outcome=(
+                task.success_criteria
+                if isinstance(action, FinishAction)
+                else f"The simulated desktop reflects the {action.kind} action."
+            ),
+        )
+        for index, action in enumerate(actions)
+    )
+    return FakePlanner(
+        plan=TaskPlan(goal=task.instruction, steps=steps),
+        decisions=decisions,
+    )
+
+
 __all__ = [
     "Difficulty",
     "EvaluationTask",
     "EvaluationTaskSuite",
     "ReferenceSolutionResult",
+    "build_reference_planner",
     "load_task_suite",
     "run_reference_solution",
 ]

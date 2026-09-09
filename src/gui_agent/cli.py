@@ -190,6 +190,11 @@ def build_parser() -> argparse.ArgumentParser:
         add_help=False,
         help="Build data, train, and evaluate the Week 5 adapter",
     )
+    subparsers.add_parser(
+        "evaluate",
+        add_help=False,
+        help="Run the Week 7 simulated desktop evaluation",
+    )
 
     run = subparsers.add_parser("run", help="Run the bounded GUI agent loop")
     task_group = run.add_mutually_exclusive_group(required=True)
@@ -262,6 +267,12 @@ def _training_main(argv: Sequence[str]) -> int:
     from gui_agent.training.cli import main as training_main
 
     return training_main(argv)
+
+
+def _evaluation_main(argv: Sequence[str]) -> int:
+    from gui_agent.evaluation.cli import main as evaluation_main
+
+    return evaluation_main(argv)
 
 
 class _SyntheticObserver:
@@ -396,6 +407,8 @@ def main(
         return _model_smoke_main(remainder)
     if args.command == "training":
         return _training_main(remainder)
+    if args.command == "evaluate":
+        return _evaluation_main(remainder)
     if remainder:
         parser.error(f"unrecognized arguments: {' '.join(remainder)}")
     if args.provider == "openai-compatible" and not args.allow_remote_image:

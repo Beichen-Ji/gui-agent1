@@ -46,7 +46,7 @@ def _display_label(state: TestbedState, control: ControlDefinition) -> str:
             "History (selected)" if state.browser_tab == "history" else "History"
         ),
         "files.filename": state.text_value("files.filename") or control.label,
-        "files.list": f"Files\n{DEMO_LIST_ENTRY}",
+        "files.list": f"Files (scroll={state.file_scroll})\n{DEMO_LIST_ENTRY}",
         "files.content": state.file_content or control.label,
         "messages.recipient": state.text_value("messages.recipient") or control.label,
         "messages.body": state.text_value("messages.body") or control.label,
@@ -59,9 +59,14 @@ def _display_label(state: TestbedState, control: ControlDefinition) -> str:
         "settings.save_button": "Saved" if state.settings_saved else "Save",
         "editor.text": state.editor_text or control.label,
         "editor.find": state.editor_find or control.label,
-        "editor.status": "Saved" if state.editor_saved else control.label,
+        "editor.status": (
+            f"{'Saved' if state.editor_saved else control.label} | scroll={state.editor_scroll}"
+        ),
     }
-    return dynamic.get(control.id, control.label)
+    label = dynamic.get(control.id, control.label)
+    if state.selection_all and control.id == state.focused_control:
+        return f"{label} [selected]"
+    return label
 
 
 DEMO_LIST_ENTRY = "week4-demo.txt"
