@@ -321,11 +321,11 @@ git commit -m "feat: add a headless simulated desktop for evaluation"
 
 **Produces:** 一对实现现有协议的适配器，让真实 `GUIAgent` 可以在模拟桌面上无人值守运行。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 覆盖：`oracle` 模式返回渲染器真值框；`ocr` 模式调用注入的 `OCRBackend`；点击命中/未命中控件的状态差异；越界坐标被拒绝；不支持的动作返回 `status="failed"` 而不是抛穿；`wait` 推进模拟时钟并触发 `delayed` 故障完成；**执行器永不返回 `status="dry_run"`**；`SimulationPolicy` 不调用 `input()`。
 
-- [ ] **Step 2: `SimulatedObservationSource`**
+- [x] **Step 2: `SimulatedObservationSource`**
 
 ```python
 class SimulatedObservationSource:
@@ -345,17 +345,17 @@ class SimulatedObservationSource:
 
 `oracle` 模式把 `hitboxes` 直接转成 `confidence=1.0` 的 `OCRDetection`；`ocr` 模式把渲染帧交给真实 `EasyOCRBackend`。两种模式产出的 `Observation` 类型完全一致，因此下游 `GUIAgent` 不需要任何分支。
 
-- [ ] **Step 3: `SimulatedActionExecutor`**
+- [x] **Step 3: `SimulatedActionExecutor`**
 
 对 `ClickAction` 做命中测试（落在哪个 hitbox 内），转成状态机调用；`TypeTextAction` 写入当前焦点控件；`HotkeyAction` 匹配应用声明的快捷键；`ScrollAction` 移动列表偏移；`DragAction` 移动滑块；`WaitAction` 推进注入的模拟时钟；`FinishAction` 不改变状态。返回 `StepResult(status="executed", ...)`。
 
-- [ ] **Step 4: `SimulationPolicy`**
+- [x] **Step 4: `SimulationPolicy`**
 
 复用 `SafetyPolicy._validate` 的全部边界校验（坐标在观察内、按键在白名单、文本长度），但**不做人工确认**。命名必须让人一眼看出它只用于模拟：类 docstring 第一句写明 “Never authorizes real desktop input.”
 
 > **不要**给 `SafetyPolicy` 加一个 `skip_confirmation=True` 开关——那会在真实路径上开一个可被误用的口子。
 
-- [ ] **Step 5: GREEN 与提交**
+- [x] **Step 5: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_simulation_harness.py -v --basetemp artifacts/pytest-week7-t2

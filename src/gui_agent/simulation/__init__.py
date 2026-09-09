@@ -6,6 +6,13 @@ from gui_agent.simulation.apps import (
     ControlDefinition,
     RelativeBox,
 )
+from gui_agent.simulation.harness import (
+    ObservationMode,
+    SimulatedActionExecutor,
+    SimulatedDesktop,
+    SimulatedObservationSource,
+    SimulationPolicy,
+)
 from gui_agent.simulation.render import LayoutControl, layout_desktop, render_desktop
 from gui_agent.simulation.state import (
     DEFAULT_TESTBED_ROOT,
@@ -28,7 +35,12 @@ __all__ = [
     "ControlDefinition",
     "FaultProfile",
     "LayoutControl",
+    "ObservationMode",
     "RelativeBox",
+    "SimulatedActionExecutor",
+    "SimulatedDesktop",
+    "SimulatedObservationSource",
+    "SimulationPolicy",
     "TestbedState",
     "layout_desktop",
     "render_desktop",
