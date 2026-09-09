@@ -8,8 +8,8 @@ from typing import Any, cast
 from gui_agent.simulation.state import (
     DEMO_FILENAME,
     FAULT_PROFILES,
-    TestbedState,
 )
+from gui_agent.simulation.state import TestbedState as TestbedState
 
 DEFAULT_TESTBED_ROOT = Path(__file__).resolve().parents[1] / "artifacts" / "testbed"
 

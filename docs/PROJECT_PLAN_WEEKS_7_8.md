@@ -432,17 +432,17 @@ git commit -m "feat: define the Week 7 desktop task suite"
 
 **Produces:** 可复现、带完整溯源、拒绝把 dry-run 计入成功的评估管线。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 覆盖：成功率/错误率分母口径（`invalid` 运行单列，不进分母）；中位与均值时间；按 `FailureReason` 的错误分类计数；宏平均 vs 微平均；报告 JSON 逐字节确定；拒绝覆盖非 `gui-agent-week7-evaluation` 的文件；断点续跑跳过已完成任务且不改变结果；**含 `dry_run` 状态的运行被标记 invalid**（新增，当前无覆盖）。
 
-- [ ] **Step 2: 抽取共享溯源助手**
+- [x] **Step 2: 抽取共享溯源助手**
 
 把 `training/evaluation.py` 中的 `_file_sha256`、`_adapter_provenance`、`write_evaluation_report` 的原子写盘与 `kind` 校验逻辑提到 `src/gui_agent/provenance.py`；`agent/qwen.py:_validated_adapter` 中重复的“run-manifest.json 同级或子级”解析一并合并。
 
 **行为必须完全保持不变**——现有 `tests/test_training_evaluation.py` 的 388 行断言是这次重构的安全网。
 
-- [ ] **Step 3: 指标定义**
+- [x] **Step 3: 指标定义**
 
 ```python
 class TaskOutcome(_StrictFrozenModel):
@@ -481,15 +481,15 @@ class SuiteMetrics(_StrictFrozenModel):
 
 耗时拆分（planner / perception / execution）通过在 harness 与 planner 外包一层计时装饰器采集，不改动 `GUIAgent` 内部。
 
-- [ ] **Step 4: Runner**
+- [x] **Step 4: Runner**
 
 单任务执行流程：构造模拟桌面 → 构造 harness → 用真实 `GUIAgent` + 真实 planner 运行 → 收集 `AgentRunResult` 与事件 → 转 `TaskOutcome`。`--resume` 时读取已有 `evaluation.json` 跳过已完成条目。每个任务单独写 `artifacts/week7/<condition>/<task_id>/events.jsonl`。
 
-- [ ] **Step 5: 报告 schema**
+- [x] **Step 5: 报告 schema**
 
 `kind: "gui-agent-week7-evaluation"`，`schema_version: 1`，包含：`suite_sha256`、`conditions_sha256`、`git_revision`、`model`、adapter 三段哈希、`prompt_profile`、`ocr_profile`、`observation_mode`、`seed`、`environment`（torch / transformers / easyocr / opencv 版本）、`metrics`、`outcomes`。
 
-- [ ] **Step 6: GREEN 与提交**
+- [x] **Step 6: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_evaluation_runner.py tests/test_evaluation_metrics.py tests/test_evaluation_report.py tests/test_training_evaluation.py -v --basetemp artifacts/pytest-week7-t4
