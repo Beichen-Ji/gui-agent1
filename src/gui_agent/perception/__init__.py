@@ -12,9 +12,16 @@ from gui_agent.perception.ocr import (
     OCRInferenceError,
     OCRInitializationError,
 )
+from gui_agent.perception.preprocessing import (
+    DEFAULT_OCR_PROFILE,
+    OCR_PROFILES,
+    OCRProfile,
+    preprocess_image,
+)
 
 __all__ = [
     "CaptureError",
+    "DEFAULT_OCR_PROFILE",
     "InvalidMonitorError",
     "InvalidRegionError",
     "EasyOCRBackend",
@@ -22,8 +29,11 @@ __all__ = [
     "OCRDependencyError",
     "OCRInferenceError",
     "OCRInitializationError",
+    "OCRProfile",
+    "OCR_PROFILES",
     "ScreenCapture",
     "MatchMode",
     "annotate_detections",
     "find_text",
+    "preprocess_image",
 ]

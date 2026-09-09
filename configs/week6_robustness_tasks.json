@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "scenarios": [
+    {
+      "id": "transient-ocr",
+      "description": "The first OCR observation fails and the second succeeds.",
+      "expected_status": "succeeded",
+      "expected_reason_code": null,
+      "expected_retries": 1,
+      "expected_replans": 0,
+      "expected_actions": 2,
+      "expected_recovery_seconds": 0.5,
+      "expected_confirmation_prompts": 0
+    },
+    {
+      "id": "no-visual-change",
+      "description": "The first click changes nothing, so the planner must choose a new action.",
+      "expected_status": "succeeded",
+      "expected_reason_code": null,
+      "expected_retries": 1,
+      "expected_replans": 0,
+      "expected_actions": 3,
+      "expected_recovery_seconds": 0.5,
+      "expected_confirmation_prompts": 0
+    },
+    {
+      "id": "delayed-result",
+      "description": "A delayed result appears after a bounded wait action.",
+      "expected_status": "succeeded",
+      "expected_reason_code": null,
+      "expected_retries": 1,
+      "expected_replans": 0,
+      "expected_actions": 3,
+      "expected_recovery_seconds": 0.5,
+      "expected_confirmation_prompts": 0
+    },
+    {
+      "id": "wrong-tab-replan",
+      "description": "A wrong tab triggers exactly one revised plan.",
+      "expected_status": "succeeded",
+      "expected_reason_code": null,
+      "expected_retries": 0,
+      "expected_replans": 1,
+      "expected_actions": 3,
+      "expected_recovery_seconds": 0.0,
+      "expected_confirmation_prompts": 0
+    },
+    {
+      "id": "transient-executor",
+      "description": "The executor raises once and then recovers with a new action.",
+      "expected_status": "succeeded",
+      "expected_reason_code": null,
+      "expected_retries": 1,
+      "expected_replans": 0,
+      "expected_actions": 3,
+      "expected_recovery_seconds": 0.5,
+      "expected_confirmation_prompts": 0
+    },
+    {
+      "id": "policy-denied",
+      "description": "An out-of-bounds action is denied without retry.",
+      "expected_status": "failed",
+      "expected_reason_code": "policy_denied",
+      "expected_retries": 0,
+      "expected_replans": 0,
+      "expected_actions": 0,
+      "expected_recovery_seconds": 0.0,
+      "expected_confirmation_prompts": 0
+    },
+    {
+      "id": "confirmation-rejected",
+      "description": "A user rejects live confirmation and no retry occurs.",
+      "expected_status": "failed",
+      "expected_reason_code": "confirmation_rejected",
+      "expected_retries": 0,
+      "expected_replans": 0,
+      "expected_actions": 0,
+      "expected_recovery_seconds": 0.0,
+      "expected_confirmation_prompts": 1
+    },
+    {
+      "id": "recovery-exhausted",
+      "description": "Both retry windows and the single replan are exhausted safely.",
+      "expected_status": "failed",
+      "expected_reason_code": "retry_exhausted",
+      "expected_retries": 2,
+      "expected_replans": 1,
+      "expected_actions": 4,
+      "expected_recovery_seconds": 1.0,
+      "expected_confirmation_prompts": 0
+    }
+  ]
+}

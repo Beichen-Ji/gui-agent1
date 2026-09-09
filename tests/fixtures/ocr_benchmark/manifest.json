@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "toolbar-buttons",
+      "width": 640,
+      "height": 240,
+      "elements": [
+        {"text": "Browser", "box": [30, 40, 190, 100]},
+        {"text": "Files", "box": [220, 40, 360, 100]},
+        {"text": "Messages", "box": [390, 40, 600, 100]}
+      ]
+    },
+    {
+      "id": "small-status-text",
+      "width": 640,
+      "height": 240,
+      "elements": [
+        {"text": "READY", "box": [30, 130, 180, 180]},
+        {"text": "Search result: 123", "box": [220, 130, 600, 180]}
+      ]
+    }
+  ]
+}

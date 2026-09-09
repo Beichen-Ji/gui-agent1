@@ -1,9 +1,10 @@
+import hashlib
 from pathlib import Path
 from typing import Protocol
 
 from gui_agent.agent.types import Observation
 from gui_agent.perception.ocr import OCRBackend
-from gui_agent.types import ScreenRegion, ScreenshotResult
+from gui_agent.types import OCRDetection, Point, ScreenRegion, ScreenshotResult
 
 
 class CaptureBackend(Protocol):
@@ -41,6 +42,8 @@ class ObservationBuilder:
         self._monitor_index = 1 if monitor_index is None and region is None else monitor_index
         self._region = region
         self._min_confidence = min_confidence
+        self._cache_key: tuple[str, Point, float, str] | None = None
+        self._cache_detections: tuple[OCRDetection, ...] = ()
 
     def observe(self, step_index: int) -> Observation:
         if self._region is None:
@@ -54,16 +57,37 @@ class ObservationBuilder:
                 self._region,
                 save_path=None,
             )
-        detections = self._ocr.recognize(
-            screenshot.image,
-            origin=screenshot.origin,
-            min_confidence=self._min_confidence,
-        )
+        cache_key = self._frame_cache_key(screenshot)
+        if cache_key == self._cache_key:
+            detections = self._cache_detections
+        else:
+            detections = tuple(
+                self._ocr.recognize(
+                    screenshot.image,
+                    origin=screenshot.origin,
+                    min_confidence=self._min_confidence,
+                )
+            )
+            self._cache_key = cache_key
+            self._cache_detections = detections
         return Observation(
             screenshot=screenshot,
-            detections=tuple(detections),
+            detections=detections,
             step_index=step_index,
         )
+
+    def clear_cache(self) -> None:
+        self._cache_key = None
+        self._cache_detections = ()
+
+    def _frame_cache_key(self, screenshot: ScreenshotResult) -> tuple[str, Point, float, str]:
+        image = screenshot.image
+        digest = hashlib.sha256()
+        digest.update(str(image.shape).encode("ascii"))
+        digest.update(str(image.dtype).encode("ascii"))
+        digest.update(image.tobytes())
+        profile = repr(getattr(self._ocr, "cache_token", type(self._ocr).__qualname__))
+        return (digest.hexdigest(), screenshot.origin, self._min_confidence, profile)
 
 
 __all__ = ["CaptureBackend", "ObservationBuilder"]

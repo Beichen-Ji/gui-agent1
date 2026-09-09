@@ -7,8 +7,18 @@ from typing import Any, Protocol, TypeVar, cast, runtime_checkable
 import cv2
 from pydantic import BaseModel, SecretStr
 
-from gui_agent.agent.prompts import build_action_prompt, build_plan_prompt
-from gui_agent.agent.types import AgentDecision, AgentState, Observation, TaskPlan
+from gui_agent.agent.prompts import (
+    build_action_prompt,
+    build_plan_prompt,
+    build_replan_prompt,
+)
+from gui_agent.agent.types import (
+    AgentDecision,
+    AgentState,
+    Observation,
+    ReplanContext,
+    TaskPlan,
+)
 
 
 class PlannerError(RuntimeError):
@@ -25,6 +35,8 @@ class MultimodalPlanner(Protocol):
 
     def next_action(self, state: AgentState) -> AgentDecision: ...
 
+    def revise_plan(self, state: AgentState, failure: ReplanContext) -> TaskPlan: ...
+
 
 class FakePlanner:
     def __init__(
@@ -32,9 +44,11 @@ class FakePlanner:
         *,
         plan: TaskPlan,
         decisions: Iterable[AgentDecision],
+        revised_plans: Iterable[TaskPlan] = (),
     ) -> None:
         self._plan = plan
         self._decisions = deque(decisions)
+        self._revised_plans = deque(revised_plans)
 
     def create_plan(self, goal: str, observation: Observation) -> TaskPlan:
         if not goal.strip():
@@ -47,6 +61,12 @@ class FakePlanner:
         if not self._decisions:
             raise PlannerError("fake planner has no configured decision remaining")
         return self._decisions.popleft()
+
+    def revise_plan(self, state: AgentState, failure: ReplanContext) -> TaskPlan:
+        del state, failure
+        if not self._revised_plans:
+            raise PlannerError("fake planner has no configured revised plan remaining")
+        return self._revised_plans.popleft()
 
 
 ModelSchema = TypeVar("ModelSchema", bound=BaseModel)
@@ -131,6 +151,13 @@ class LangChainPlanner:
         return self._invoke(
             AgentDecision,
             build_action_prompt(state),
+            state.observation,
+        )
+
+    def revise_plan(self, state: AgentState, failure: ReplanContext) -> TaskPlan:
+        return self._invoke(
+            TaskPlan,
+            build_replan_prompt(state, failure),
             state.observation,
         )
 

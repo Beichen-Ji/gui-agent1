@@ -4,6 +4,12 @@ from typing import Protocol, cast, runtime_checkable
 
 import numpy as np
 
+from gui_agent.perception.preprocessing import (
+    DEFAULT_OCR_PROFILE,
+    OCRProfile,
+    get_ocr_profile,
+    preprocess_image,
+)
 from gui_agent.types import BoundingBox, ImageArray, OCRDetection, Point
 
 
@@ -26,6 +32,14 @@ class OCRReader(Protocol):
         *,
         detail: int,
         paragraph: bool,
+        decoder: str,
+        beamWidth: int,
+        batch_size: int,
+        workers: int,
+        canvas_size: int,
+        mag_ratio: float,
+        contrast_ths: float,
+        adjust_contrast: float,
     ) -> Sequence[object]: ...
 
 
@@ -84,6 +98,7 @@ class EasyOCRBackend:
         gpu: bool | str | None = None,
         reader_factory: ReaderFactory | None = None,
         cuda_available: CudaProbe | None = None,
+        profile: str | OCRProfile = DEFAULT_OCR_PROFILE,
     ) -> None:
         if not languages or any(
             not isinstance(item, str) or not item.strip() for item in languages
@@ -94,6 +109,11 @@ class EasyOCRBackend:
         self._reader_factory = reader_factory or _default_reader_factory
         self._cuda_available = cuda_available or _default_cuda_available
         self._reader: OCRReader | None = None
+        self._profile = get_ocr_profile(profile)
+
+    @property
+    def cache_token(self) -> str:
+        return repr(self._profile)
 
     def recognize(
         self,
@@ -105,12 +125,31 @@ class EasyOCRBackend:
         _validate_image(image)
         if not isfinite(min_confidence) or not 0.0 <= min_confidence <= 1.0:
             raise ValueError("min_confidence must be between 0 and 1")
+        processed = preprocess_image(image, self._profile)
         reader = self._reader_instance()
         try:
-            raw_results = reader.readtext(image, detail=1, paragraph=False)
+            raw_results = reader.readtext(
+                processed.image,
+                detail=1,
+                paragraph=False,
+                decoder=self._profile.decoder,
+                beamWidth=self._profile.beam_width,
+                batch_size=self._profile.batch_size,
+                workers=self._profile.workers,
+                canvas_size=self._profile.canvas_size,
+                mag_ratio=1.0,
+                contrast_ths=self._profile.contrast_threshold,
+                adjust_contrast=self._profile.adjust_contrast,
+            )
         except Exception as error:
             raise OCRInferenceError("EasyOCR inference failed") from error
-        return self._normalize(raw_results, origin, min_confidence)
+        return self._normalize(
+            raw_results,
+            origin,
+            min_confidence,
+            scale_x=processed.scale_x,
+            scale_y=processed.scale_y,
+        )
 
     def _reader_instance(self) -> OCRReader:
         if self._reader is not None:
@@ -134,11 +173,19 @@ class EasyOCRBackend:
         raw_results: Sequence[object],
         origin: Point,
         min_confidence: float,
+        *,
+        scale_x: float = 1.0,
+        scale_y: float = 1.0,
     ) -> list[OCRDetection]:
         detections: list[OCRDetection] = []
         try:
             for raw_result in raw_results:
-                detection = cls._normalize_one(raw_result, origin)
+                detection = cls._normalize_one(
+                    raw_result,
+                    origin,
+                    scale_x=scale_x,
+                    scale_y=scale_y,
+                )
                 if detection is not None and detection.confidence >= min_confidence:
                     detections.append(detection)
         except OCRInferenceError:
@@ -148,7 +195,13 @@ class EasyOCRBackend:
         return detections
 
     @staticmethod
-    def _normalize_one(raw_result: object, origin: Point) -> OCRDetection | None:
+    def _normalize_one(
+        raw_result: object,
+        origin: Point,
+        *,
+        scale_x: float = 1.0,
+        scale_y: float = 1.0,
+    ) -> OCRDetection | None:
         if not isinstance(raw_result, (list, tuple)) or len(raw_result) != 3:
             raise OCRInferenceError("EasyOCR returned a malformed result tuple")
         raw_box, raw_text, raw_confidence = raw_result
@@ -170,10 +223,10 @@ class EasyOCRBackend:
             raise OCRInferenceError("EasyOCR returned a malformed bounding box")
         try:
             box = BoundingBox(
-                left=floor(float(points[:, 0].min())) + origin.x,
-                top=floor(float(points[:, 1].min())) + origin.y,
-                right=ceil(float(points[:, 0].max())) + origin.x,
-                bottom=ceil(float(points[:, 1].max())) + origin.y,
+                left=floor(float(points[:, 0].min()) / scale_x) + origin.x,
+                top=floor(float(points[:, 1].min()) / scale_y) + origin.y,
+                right=ceil(float(points[:, 0].max()) / scale_x) + origin.x,
+                bottom=ceil(float(points[:, 1].max()) / scale_y) + origin.y,
             )
         except ValueError as error:
             raise OCRInferenceError("EasyOCR returned a malformed bounding box") from error
