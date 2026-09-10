@@ -650,7 +650,7 @@ git commit -m "docs: compare the local agent with UI-TARS and Computer Use"
 
 **Produces:** 量化 sim-to-real 差距的 3 项人工记录，与自动指标严格分离。
 
-- [ ] **Step 1: 选 3 项任务**
+- [x] **Step 1: 选 3 项任务**
 
 从 easy / medium / hard 各取 1 项，且都能在 Week 6 的 Tk testbed 上复现（`browser` 搜索类最合适）。
 
