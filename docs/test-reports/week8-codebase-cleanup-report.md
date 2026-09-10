@@ -41,21 +41,32 @@ checks and Python bytecode compilation also passed. Therefore no private functio
 class has been removed without evidence. Existing callbacks, protocol methods,
 serialization hooks, and dependency-injection seams remain intact.
 
+Eight duplicated private `_StrictFrozenModel` class definitions were removed from
+the agent, dataset, training, and evaluation schema modules after their strict,
+frozen, and extra-field behavior was protected by a shared-base test. The private
+CLI callbacks and Qwen/LoRA default loader wrappers remain because they preserve
+module seams and caller-specific behavior.
+
 Generic adapter provenance remains centralized in `provenance.py`. Qwen-specific
 model, grid, prompt-profile, and hash validation remains in `agent/qwen.py` because
 it is runtime adapter policy rather than duplicate generic provenance behavior.
 
 ## Final Verification
 
-To be completed after production docstrings and the repository-wide Ruff
-documentation gate are added:
-
-- Public API comparison: pending.
-- Full Ruff result: pending.
-- Full mypy result: pending.
-- Non-integration tests and coverage: pending.
-- Integration tests: pending.
-- Repository hygiene check: pending.
+- Public API comparison: 314 baseline AST-visible definitions and 320 current
+  definitions; zero changed signatures. The only relocated definition is
+  `perception.benchmark.normalize_text`, whose original import path and signature
+  now resolve directly to `perception.text.normalize_text`.
+- Ruff: passed repository-wide with Google-style production docstrings enabled;
+  production missing-docstring diagnostics decreased from 378 to 0.
+- mypy: passed for 125 source files under `src`, `tests`, `examples`, and `scripts`.
+- Non-integration tests: 482 passed, 13 deselected; total coverage remained 88%.
+- Integration tests: 11 passed, 2 expected opt-in GPU/model tests skipped, 482
+  deselected.
+- Collection: 495 tests, nine more than the 486-test baseline.
+- Repository hygiene: `git diff --check` passed. No environment, model, screenshot,
+  or generated artifact is tracked; the pre-existing `artifacts/.gitkeep` directory
+  placeholder remains intentionally tracked.
 
 ## Known Limitation
 

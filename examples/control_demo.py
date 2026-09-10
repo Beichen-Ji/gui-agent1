@@ -1,3 +1,5 @@
+"""Preview or confirm a bounded desktop-control action."""
+
 import argparse
 import sys
 from collections.abc import Callable, Sequence

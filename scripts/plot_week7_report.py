@@ -1,3 +1,5 @@
+"""Generate PNG and SVG figures from Week 7 evaluation reports."""
+
 from __future__ import annotations
 
 import argparse
@@ -13,6 +15,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Load a report series and save the standard Week 7 figures."""
     args = _parser().parse_args(argv)
     try:
         from gui_agent.evaluation.plots import load_report_series, save_week7_figures

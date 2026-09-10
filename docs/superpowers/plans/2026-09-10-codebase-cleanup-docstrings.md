@@ -742,7 +742,7 @@ git commit -m "docs: document data training simulation and evaluation APIs"
 - Produces: repository-wide Ruff enforcement for production docstrings
 - Preserves: test/example ergonomics through narrow per-file ignores
 
-- [ ] **Step 1: Enable Ruff documentation rules**
+- [x] **Step 1: Enable Ruff documentation rules**
 
 Use the Google convention and retain the existing rules:
 
@@ -760,7 +760,7 @@ convention = "google"
 
 If Ruff reports duplicate constructor or magic-method prose under `D105`/`D107`, document those call boundaries rather than applying a production-wide ignore. Use a narrow ignore only when Ruff requires two docstrings for the same public contract and record the exact rule in the cleanup report.
 
-- [ ] **Step 2: Compare public definitions against the merged baseline**
+- [x] **Step 2: Compare public definitions against the merged baseline**
 
 ```powershell
 git diff --unified=0 origin/master -- src/gui_agent `
@@ -771,7 +771,7 @@ Get-Content artifacts/week8-cleanup/public-definition-diff.txt
 
 Expected: no removed public definition and no changed public callable signature. New shared helper definitions are additions only. Investigate every output line before continuing.
 
-- [ ] **Step 3: Run the full final gate**
+- [x] **Step 3: Run the full final gate**
 
 ```powershell
 $env:VIRTUAL_ENV = $null
@@ -787,7 +787,7 @@ uv run --no-sync pytest -m integration `
 
 Expected: lock, Ruff, and mypy pass; at least 486 tests are collected; non-integration coverage is at least 88%; integration results have only the two baseline opt-in GPU/model skips unless their environment flags are intentionally enabled.
 
-- [ ] **Step 4: Finish the cleanup report and inspect repository hygiene**
+- [x] **Step 4: Finish the cleanup report and inspect repository hygiene**
 
 Record exact test counts, coverage, Ruff/mypy results, public API comparison, removed private symbols, retained compatibility wrappers, and known limitations. Then run:
 
@@ -805,7 +805,7 @@ $unexpected = git ls-files artifacts .venv models
 if ($unexpected) { throw "generated/private artifacts are tracked: $unexpected" }
 ```
 
-- [ ] **Step 5: Commit the final gate configuration and report**
+- [x] **Step 5: Commit the final gate configuration and report**
 
 ```powershell
 git add pyproject.toml docs/test-reports/week8-codebase-cleanup-report.md `

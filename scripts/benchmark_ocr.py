@@ -1,3 +1,5 @@
+"""Benchmark selected OCR profiles against a deterministic manifest."""
+
 import argparse
 import json
 from collections.abc import Sequence
@@ -26,6 +28,7 @@ def _positive_integer(value: str) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the OCR benchmark command-line parser."""
     parser = argparse.ArgumentParser(description="Benchmark safe OCR profiles")
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument(
@@ -41,6 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run requested profiles and write their JSON benchmark report."""
     args = build_parser().parse_args(argv)
     report = benchmark_profiles(
         args.manifest,

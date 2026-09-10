@@ -1,3 +1,5 @@
+"""Launch the local deterministic GUI testbed backed by simulated state."""
+
 import argparse
 import tkinter as tk
 from collections.abc import Sequence
@@ -15,7 +17,10 @@ DEFAULT_TESTBED_ROOT = Path(__file__).resolve().parents[1] / "artifacts" / "test
 
 
 class TestbedApp:
+    """Render simulated testbed state as an interactive local Tk window."""
+
     def __init__(self, root: tk.Tk, state: TestbedState) -> None:
+        """Build widgets and bind them to the supplied isolated state."""
         self._root = root
         self._state = state
         root.title("GUI Agent Week 6 Testbed")
