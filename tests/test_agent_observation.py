@@ -205,3 +205,19 @@ def test_observation_cache_hits_only_for_an_exact_frame_origin_and_profile() -> 
     ocr.cache_token = "balanced"
     builder.observe(4)
     assert len(ocr.calls) == 4
+
+
+def test_clear_cache_forces_ocr_for_an_unchanged_frame() -> None:
+    screenshot = screenshot_fixture()
+    capture = FakeCapture(screenshot)
+    ocr = FakeOCR([])
+    builder = ObservationBuilder(capture, ocr)
+
+    builder.observe(0)
+    builder.observe(1)
+    assert len(ocr.calls) == 1
+
+    builder.clear_cache()
+    builder.observe(2)
+
+    assert len(ocr.calls) == 2

@@ -34,7 +34,7 @@
 - Consumes: `ObservationBuilder.observe(step_index: int) -> Observation`
 - Protects: `ObservationBuilder.clear_cache() -> None`
 
-- [ ] **Step 1: Add the characterization test**
+- [x] **Step 1: Add the characterization test**
 
 Append a test that observes an identical frame twice, verifies one OCR call, clears the cache, observes again, and verifies a second OCR call:
 
@@ -55,7 +55,7 @@ def test_clear_cache_forces_ocr_for_an_unchanged_frame() -> None:
     assert len(ocr.calls) == 2
 ```
 
-- [ ] **Step 2: Run the focused characterization test**
+- [x] **Step 2: Run the focused characterization test**
 
 Run:
 
@@ -65,22 +65,20 @@ uv run --no-sync pytest tests/test_agent_observation.py -q
 
 Expected: all observation tests pass on the baseline implementation. This is a characterization test, so it is expected to be green before refactoring.
 
-- [ ] **Step 3: Record the public-surface baseline**
+- [x] **Step 3: Record the public-surface baseline**
 
-Run these read-only commands and retain their output under ignored `artifacts/`:
+Use the immutable `origin/master` tree as the baseline and count its public definitions:
 
 ```powershell
-New-Item -ItemType Directory -Force artifacts/week8-cleanup | Out-Null
-git grep -n -E "^(class|def) [A-Za-z][A-Za-z0-9_]*|^    def [A-Za-z][A-Za-z0-9_]*" `
-  origin/master -- src/gui_agent `
-  | Set-Content -Encoding utf8 artifacts/week8-cleanup/public-symbols-before.txt
-uv run --no-sync ruff check . `
-  | Set-Content -Encoding utf8 artifacts/week8-cleanup/ruff-before.txt
+$public = git grep -n -E "^(class|def) [A-Za-z][A-Za-z0-9_]*|^    def [A-Za-z][A-Za-z0-9_]*" `
+  origin/master -- src/gui_agent
+"PUBLIC_SYMBOL_BASELINE_LINES=$($public.Count)"
+uv run --no-sync ruff check .
 ```
 
-Expected: the symbol inventory is created only under ignored `artifacts/`; Ruff exits cleanly.
+Observed: `PUBLIC_SYMBOL_BASELINE_LINES=332`; Ruff exits cleanly. The final audit compares directly against the same immutable Git tree instead of a generated copy.
 
-- [ ] **Step 4: Commit the compatibility guard**
+- [x] **Step 4: Commit the compatibility guard**
 
 ```powershell
 git add tests/test_agent_observation.py docs/superpowers/plans/2026-09-10-codebase-cleanup-docstrings.md
