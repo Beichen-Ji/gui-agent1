@@ -1,3 +1,5 @@
+"""Normalize optional EasyOCR output into validated absolute detections."""
+
 from collections.abc import Callable, Sequence
 from math import ceil, floor, isfinite
 from typing import Protocol, cast, runtime_checkable
@@ -26,6 +28,8 @@ class OCRInferenceError(RuntimeError):
 
 
 class OCRReader(Protocol):
+    """Describe the EasyOCR reader call consumed by the backend."""
+
     def readtext(
         self,
         image: ImageArray,
@@ -40,7 +44,9 @@ class OCRReader(Protocol):
         mag_ratio: float,
         contrast_ths: float,
         adjust_contrast: float,
-    ) -> Sequence[object]: ...
+    ) -> Sequence[object]:
+        """Return raw EasyOCR detection records for one prepared image."""
+        ...
 
 
 ReaderFactory = Callable[[list[str], bool | str], OCRReader]
@@ -50,13 +56,17 @@ DEFAULT_ORIGIN = Point(0, 0)
 
 @runtime_checkable
 class OCRBackend(Protocol):
+    """Recognize text in an image and return absolute-coordinate detections."""
+
     def recognize(
         self,
         image: ImageArray,
         *,
         origin: Point = DEFAULT_ORIGIN,
         min_confidence: float = 0.0,
-    ) -> list[OCRDetection]: ...
+    ) -> list[OCRDetection]:
+        """Recognize text above the requested confidence threshold."""
+        ...
 
 
 def _default_reader_factory(languages: list[str], gpu: bool | str) -> OCRReader:
@@ -100,6 +110,7 @@ class EasyOCRBackend:
         cuda_available: CudaProbe | None = None,
         profile: str | OCRProfile = DEFAULT_OCR_PROFILE,
     ) -> None:
+        """Configure lazy reader creation and a validated preprocessing profile."""
         if not languages or any(
             not isinstance(item, str) or not item.strip() for item in languages
         ):
@@ -113,6 +124,7 @@ class EasyOCRBackend:
 
     @property
     def cache_token(self) -> str:
+        """Return a stable token distinguishing OCR preprocessing settings."""
         return repr(self._profile)
 
     def recognize(
@@ -122,6 +134,7 @@ class EasyOCRBackend:
         origin: Point = DEFAULT_ORIGIN,
         min_confidence: float = 0.0,
     ) -> list[OCRDetection]:
+        """Run EasyOCR and map processed-image boxes to absolute coordinates."""
         _validate_image(image)
         if not isfinite(min_confidence) or not 0.0 <= min_confidence <= 1.0:
             raise ValueError("min_confidence must be between 0 and 1")

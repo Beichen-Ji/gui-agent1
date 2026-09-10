@@ -1,18 +1,19 @@
+"""Strict persisted schemas for normalized public GUI datasets."""
+
 from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, model_validator
 
+from gui_agent._models import StrictFrozenModel
 from gui_agent.agent.types import AgentAction
 
 DatasetSource = Literal["screenagent", "mind2web", "webarena"]
 RecordType = Literal["trajectory_step", "task"]
 
 
-class _StrictFrozenModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+class NormalizedGUIRecord(StrictFrozenModel):
+    """Represent a validated trajectory step or task-level benchmark record."""
 
-
-class NormalizedGUIRecord(_StrictFrozenModel):
     schema_version: Literal[1] = 1
     source: DatasetSource
     record_type: RecordType
@@ -28,6 +29,7 @@ class NormalizedGUIRecord(_StrictFrozenModel):
 
     @model_validator(mode="after")
     def validate_record_shape(self) -> Self:
+        """Require fields appropriate to the selected record type."""
         if self.record_type == "trajectory_step":
             if self.action is None:
                 raise ValueError("trajectory_step requires an action")
@@ -38,7 +40,9 @@ class NormalizedGUIRecord(_StrictFrozenModel):
         return self
 
 
-class DatasetManifest(_StrictFrozenModel):
+class DatasetManifest(StrictFrozenModel):
+    """Record source license, revision, output count, and content hash."""
+
     schema_version: Literal[1] = 1
     source: DatasetSource
     source_url: str = Field(min_length=1, max_length=1000)

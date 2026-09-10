@@ -1,3 +1,5 @@
+"""Adapt WebArena task configurations into strict task records."""
+
 import json
 from collections.abc import Iterator, Mapping
 from pathlib import Path
@@ -31,6 +33,7 @@ def iter_webarena(
     *,
     source_revision: str = "unknown",
 ) -> Iterator[NormalizedGUIRecord]:
+    """Yield deterministic WebArena tasks with serialized success criteria."""
     if not config_dir.is_dir():
         raise DatasetAdapterError(f"{config_dir}: WebArena config directory does not exist")
     raw_config = config_dir / "test.raw.json"

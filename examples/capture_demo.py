@@ -1,3 +1,5 @@
+"""Capture one monitor or explicit desktop region to a requested file."""
+
 import argparse
 import sys
 from collections.abc import Sequence

@@ -1,3 +1,5 @@
+"""Coordinate the bounded observe-plan-authorize-execute-verify loop."""
+
 import time
 import uuid
 from collections.abc import Callable, Sequence
@@ -50,6 +52,8 @@ FailureStage: TypeAlias = Literal[
 
 @dataclass(frozen=True, slots=True)
 class AgentRunResult:
+    """Summarize a complete, failed, or deliberately stopped agent run."""
+
     goal: str
     status: RunStatus
     message: str
@@ -64,21 +68,33 @@ class AgentRunResult:
 
 
 class ObservationSource(Protocol):
-    def observe(self, step_index: int) -> Observation: ...
+    """Provide one observation for a numbered agent step."""
+
+    def observe(self, step_index: int) -> Observation:
+        """Capture and return one indexed desktop observation."""
+        ...
 
 
 class ActionPolicy(Protocol):
+    """Authorize an action before any executor can receive it."""
+
     def authorize(
         self,
         action: AgentAction,
         observation: Observation,
         *,
         expected_outcome: str,
-    ) -> None: ...
+    ) -> None:
+        """Raise unless the proposed action is authorized for execution."""
+        ...
 
 
 class PlannedActionExecutor(Protocol):
-    def execute(self, action: AgentAction, *, step_index: int) -> StepResult: ...
+    """Execute approved plan actions and report failures without bypassing policy."""
+
+    def execute(self, action: AgentAction, *, step_index: int) -> StepResult:
+        """Execute one previously authorized action."""
+        ...
 
 
 class GUIAgent:
@@ -99,6 +115,7 @@ class GUIAgent:
         run_id_factory: Callable[[], str] = lambda: uuid.uuid4().hex,
         event_clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
+        """Configure bounded recovery, verification, and redacted event emission."""
         if isinstance(max_replans, bool) or max_replans not in {0, 1}:
             raise ValueError("max_replans must be 0 or 1")
         self._observer = observer
@@ -121,6 +138,7 @@ class GUIAgent:
         success_criteria: str | None = None,
         max_steps: int = 10,
     ) -> AgentRunResult:
+        """Run a validated goal until success, failure, or the step bound."""
         if not isinstance(goal, str) or not goal.strip():
             raise ValueError("goal must not be blank")
         if isinstance(max_steps, bool) or not isinstance(max_steps, int) or max_steps < 1:

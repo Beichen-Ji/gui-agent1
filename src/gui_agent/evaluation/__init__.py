@@ -1,3 +1,5 @@
+"""Reproducible simulated evaluation suites, metrics, reports, and plots."""
+
 from gui_agent.evaluation.metrics import (
     SuiteMetrics,
     TaskOutcome,

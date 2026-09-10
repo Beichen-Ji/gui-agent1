@@ -1,3 +1,5 @@
+"""Fail-closed validation and exact confirmation for model-proposed actions."""
+
 import math
 from collections.abc import Callable
 
@@ -28,7 +30,7 @@ def _escaped_preview(value: str, *, max_length: int) -> str:
 
 
 class SafetyPolicy:
-    """Validate untrusted model actions before they reach desktop control."""
+    """Authorize real desktop input only after validation and exact confirmation."""
 
     def __init__(
         self,
@@ -36,11 +38,13 @@ class SafetyPolicy:
         execute: bool = False,
         input_fn: Callable[[str], str] = input,
     ) -> None:
+        """Configure preview-only or confirmation-gated execution mode."""
         self._execute = execute
         self._input_fn = input_fn
 
     @property
     def execute(self) -> bool:
+        """Return whether live actions may proceed after confirmation."""
         return self._execute
 
     def authorize(
@@ -50,6 +54,7 @@ class SafetyPolicy:
         *,
         expected_outcome: str,
     ) -> None:
+        """Validate an untrusted action and fail closed on live confirmation."""
         description = self._validate(action, observation)
         if not isinstance(expected_outcome, str) or not expected_outcome.strip():
             raise ActionDeniedError("expected outcome must not be blank")

@@ -1,3 +1,5 @@
+"""Run bounded QLoRA training and record reproducible output provenance."""
+
 import gc
 import hashlib
 import importlib.metadata
@@ -33,6 +35,8 @@ def _history_value(value: object) -> HistoryValue:
 
 @dataclass(frozen=True, slots=True)
 class BackendResult:
+    """Return normalized training history, resource use, and adapter checks."""
+
     history: tuple[dict[str, HistoryValue], ...]
     trainable_parameters: int
     total_parameters: int
@@ -44,6 +48,8 @@ class BackendResult:
 
 
 class TrainingRunManifest(BaseModel):
+    """Record configuration, data, environment, and output hashes for a run."""
+
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
     schema_version: Literal[1] = 1
@@ -311,6 +317,7 @@ def run_training(
     project_root: Path | None = None,
     training_backend: Callable[..., BackendResult] = _default_training_backend,
 ) -> TrainingRunManifest:
+    """Run or check training inside an owned output and write its manifest."""
     root = (project_root or Path.cwd()).resolve()
     resolved_output = validate_training_output_path(output_dir, project_root=root)
     if resolved_output.exists():

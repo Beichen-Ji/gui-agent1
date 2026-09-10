@@ -1,3 +1,5 @@
+"""Run OCR on a caller-supplied image and print absolute detections."""
+
 import argparse
 import sys
 from collections.abc import Sequence

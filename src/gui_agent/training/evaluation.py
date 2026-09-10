@@ -1,3 +1,5 @@
+"""Run deterministic plan-and-action evaluation for base and adapter models."""
+
 import hashlib
 import json
 import statistics
@@ -10,14 +12,9 @@ from typing import Literal
 
 import numpy as np
 from PIL import Image, ImageDraw
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    field_validator,
-    model_validator,
-)
+from pydantic import Field, field_validator, model_validator
 
+from gui_agent._models import StrictFrozenModel
 from gui_agent.agent.coordinates import action_to_grid
 from gui_agent.agent.prompts import get_prompt_profile
 from gui_agent.agent.qwen import QwenTransformersPlanner
@@ -41,11 +38,9 @@ from gui_agent.types import BoundingBox, OCRDetection, Point, ScreenRegion, Scre
 _POINTER_TOLERANCE = 50
 
 
-class _StrictFrozenModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+class EvaluationElement(StrictFrozenModel):
+    """Describe one labeled rectangle in a synthetic evaluation image."""
 
-
-class EvaluationElement(_StrictFrozenModel):
     label: str = Field(min_length=1, max_length=120)
     box: tuple[int, int, int, int]
     fill: str = Field(min_length=1, max_length=32)
@@ -58,7 +53,9 @@ class EvaluationElement(_StrictFrozenModel):
         return self
 
 
-class EvaluationCase(_StrictFrozenModel):
+class EvaluationCase(StrictFrozenModel):
+    """Define one synthetic task, expected action, and scoring requirements."""
+
     id: str = Field(min_length=1, max_length=80)
     canvas: tuple[int, int]
     instruction: str = Field(min_length=1, max_length=1000)
@@ -95,7 +92,9 @@ class EvaluationCase(_StrictFrozenModel):
         return self
 
 
-class EvaluationCaseSet(_StrictFrozenModel):
+class EvaluationCaseSet(StrictFrozenModel):
+    """Store a versioned collection with unique evaluation case identifiers."""
+
     schema_version: Literal[1]
     cases: tuple[EvaluationCase, ...] = Field(min_length=1)
 
@@ -108,7 +107,9 @@ class EvaluationCaseSet(_StrictFrozenModel):
         return value
 
 
-class EvaluationCondition(_StrictFrozenModel):
+class EvaluationCondition(StrictFrozenModel):
+    """Identify a model, prompt profile, and optional adapter provenance."""
+
     id: str = Field(default="", max_length=120)
     model: str = Field(min_length=1, max_length=500)
     prompt_profile: str = Field(min_length=1, max_length=80)
@@ -157,7 +158,9 @@ class EvaluationCondition(_StrictFrozenModel):
         return f"{prefix}-{self.prompt_profile}-{digest}"
 
 
-class EvaluationPrediction(_StrictFrozenModel):
+class EvaluationPrediction(StrictFrozenModel):
+    """Store either one valid prediction or one typed inference failure."""
+
     condition_id: str = Field(min_length=1, max_length=120)
     case_id: str = Field(min_length=1, max_length=80)
     plan: TaskPlan | None = None
@@ -174,7 +177,9 @@ class EvaluationPrediction(_StrictFrozenModel):
         return self
 
 
-class EvaluationMetrics(_StrictFrozenModel):
+class EvaluationMetrics(StrictFrozenModel):
+    """Store aggregate schema, plan, action, latency, and memory metrics."""
+
     schema_valid_rate: float = Field(ge=0.0, le=1.0)
     plan_requirement_recall: float = Field(ge=0.0, le=1.0)
     action_kind_accuracy: float = Field(ge=0.0, le=1.0)
@@ -184,7 +189,9 @@ class EvaluationMetrics(_StrictFrozenModel):
     peak_vram_mib: float = Field(ge=0.0)
 
 
-class EvaluationOutcome(_StrictFrozenModel):
+class EvaluationOutcome(StrictFrozenModel):
+    """Store per-case correctness, performance, and failure evidence."""
+
     case_id: str
     schema_valid: bool
     plan_requirement_recall: float
@@ -197,7 +204,9 @@ class EvaluationOutcome(_StrictFrozenModel):
     predicted_action: AgentAction | None
 
 
-class EvaluationReport(_StrictFrozenModel):
+class EvaluationReport(StrictFrozenModel):
+    """Store a reproducible condition, aggregate metrics, and case outcomes."""
+
     kind: Literal["gui-agent-week5-evaluation"] = "gui-agent-week5-evaluation"
     cases_sha256: str
     condition: EvaluationCondition
@@ -216,6 +225,7 @@ class EvaluationReport(_StrictFrozenModel):
 
 
 def load_evaluation_cases(path: Path) -> tuple[EvaluationCase, ...]:
+    """Load and strictly validate a versioned evaluation case file."""
     try:
         raw = path.read_text(encoding="utf-8")
     except OSError as error:
@@ -233,6 +243,7 @@ def build_evaluation_condition(
     prompt_profile: str,
     adapter_path: Path | None,
 ) -> EvaluationCondition:
+    """Build a deterministic condition ID from model and adapter provenance."""
     selected_profile = get_prompt_profile(prompt_profile)
     if adapter_path is None:
         return EvaluationCondition(
@@ -310,6 +321,7 @@ def evaluate_predictions(
     *,
     cases_sha256: str,
 ) -> EvaluationReport:
+    """Score exactly one prediction per case with macro action metrics."""
     ordered_cases = tuple(sorted(cases, key=lambda case: case.id))
     ordered_predictions = tuple(sorted(predictions, key=lambda item: item.case_id))
     if not ordered_cases:
@@ -401,6 +413,7 @@ def write_evaluation_report(
     *,
     overwrite: bool = False,
 ) -> None:
+    """Atomically write a report only to a caller-owned evaluation path."""
     atomic_write_owned_json(
         report.model_dump(mode="json"),
         path,
@@ -471,6 +484,7 @@ def run_evaluation(
     overwrite: bool = False,
     clock: Callable[[], float] = time.perf_counter,
 ) -> EvaluationReport:
+    """Run local Qwen inference for all cases and persist one report."""
     selected_profile = get_prompt_profile(prompt_profile)
     resolved_output = validate_training_output_path(output_path, project_root=Path.cwd())
     raw_cases = cases_path.read_bytes()

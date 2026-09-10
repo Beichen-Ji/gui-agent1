@@ -1,3 +1,5 @@
+"""Sort, serialize, and record provenance for normalized dataset records."""
+
 import hashlib
 import json
 from collections.abc import Iterable
@@ -5,36 +7,26 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from gui_agent.datasets.schema import DatasetManifest, NormalizedGUIRecord
-
-_SOURCE_METADATA = {
-    "screenagent": (
-        "https://github.com/niuzaisheng/ScreenAgent",
-        "Apache-2.0 (dataset); MIT (code)",
-    ),
-    "mind2web": (
-        "https://huggingface.co/datasets/osunlp/Mind2Web",
-        "Creative Commons Attribution 4.0 International",
-    ),
-    "webarena": (
-        "https://github.com/web-arena-x/webarena",
-        "Apache-2.0",
-    ),
-}
+from gui_agent.datasets.sources import DATASET_SOURCES
 
 
 @dataclass(slots=True)
 class AdapterReport:
+    """Count skipped records while bounding retained issue details."""
+
     records_skipped: int = 0
     issues: list[str] = field(default_factory=list)
     issue_limit: int = 20
 
     def skip(self, issue: str) -> None:
+        """Record one skip and retain its message only within the issue limit."""
         self.records_skipped += 1
         if len(self.issues) < self.issue_limit:
             self.issues.append(issue)
 
     @property
     def suppressed_issue_count(self) -> int:
+        """Return the number of issue messages omitted from the report."""
         return max(0, self.records_skipped - len(self.issues))
 
 
@@ -59,6 +51,7 @@ def write_dataset(
     limit: int | None = None,
     records_skipped: int = 0,
 ) -> DatasetManifest:
+    """Write one source and revision deterministically with a provenance manifest."""
     if limit is not None and (isinstance(limit, bool) or limit < 1):
         raise ValueError("limit must be a positive integer or None")
     if isinstance(records_skipped, bool) or records_skipped < 0:
@@ -87,12 +80,12 @@ def write_dataset(
     records_path.write_bytes(serialized)
 
     source = selected[0].source
-    source_url, license_text = _SOURCE_METADATA[source]
+    source_metadata = DATASET_SOURCES[source]
     manifest = DatasetManifest(
         source=source,
-        source_url=source_url,
+        source_url=source_metadata.url,
         source_revision=selected[0].source_revision,
-        license=license_text,
+        license=source_metadata.license,
         records_written=len(selected),
         records_skipped=records_skipped + len(ordered) - len(selected),
         output_file=records_path.name,

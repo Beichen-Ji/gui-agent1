@@ -1,3 +1,5 @@
+"""Validated desktop control adapters and dry-run orchestration."""
+
 from gui_agent.control.controller import (
     ActionRecord,
     DesktopBackend,

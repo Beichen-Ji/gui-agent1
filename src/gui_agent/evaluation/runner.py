@@ -1,3 +1,5 @@
+"""Run simulated tasks with stage timing and resumable report writes."""
+
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
@@ -183,6 +185,7 @@ def run_evaluation(
     resume: bool = False,
     clock: MonotonicClock = time.perf_counter,
 ) -> EvaluationReport:
+    """Run missing or invalid tasks and persist progress after each outcome."""
     requested = tuple(tasks)
     report_path = output_dir / "evaluation.json"
     existing: EvaluationReport | None = None

@@ -1,3 +1,5 @@
+"""Bound retry decisions by typed failure reason and attempt count."""
+
 from gui_agent.agent.types import RetryDecision, VerificationResult
 
 _NEVER_RETRY = frozenset(
@@ -20,6 +22,7 @@ class RetryPolicy:
         max_retries_per_step: int = 2,
         backoff_seconds: tuple[float, ...] = (0.5, 1.0),
     ) -> None:
+        """Configure at most two retries with bounded deterministic delays."""
         if (
             isinstance(max_retries_per_step, bool)
             or not isinstance(max_retries_per_step, int)
@@ -37,6 +40,7 @@ class RetryPolicy:
         self.backoff_seconds = tuple(float(delay) for delay in backoff_seconds)
 
     def decide(self, failure: VerificationResult, *, attempt: int) -> RetryDecision:
+        """Return a retry or stop decision for one failed verification."""
         if failure.passed or failure.reason_code is None:
             raise ValueError("retry decisions require a failed verification")
         if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 1:

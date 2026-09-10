@@ -1,3 +1,5 @@
+"""Normalize supported public GUI datasets into stable project schemas."""
+
 from gui_agent.datasets.mind2web import iter_mind2web
 from gui_agent.datasets.pipeline import AdapterReport, write_dataset
 from gui_agent.datasets.schema import (

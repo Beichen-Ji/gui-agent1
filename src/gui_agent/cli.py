@@ -1,3 +1,5 @@
+"""Orchestrate safe dataset, model, training, evaluation, and agent commands."""
+
 import argparse
 import json
 import os
@@ -38,6 +40,7 @@ from gui_agent.agent.types import (
     TypeTextAction,
     WaitAction,
 )
+from gui_agent.cli_args import parse_integer_at_least
 from gui_agent.control.controller import DesktopController
 from gui_agent.perception.capture import ScreenCapture
 from gui_agent.perception.ocr import EasyOCRBackend
@@ -52,6 +55,8 @@ _ACTION_ADAPTER: TypeAdapter[AgentAction] = TypeAdapter(AgentAction)
 
 @dataclass(frozen=True, slots=True)
 class TaskDefinition:
+    """Store one predefined goal, success criterion, and fake action sequence."""
+
     id: str
     instruction: str
     success_criteria: str
@@ -60,6 +65,8 @@ class TaskDefinition:
 
 @dataclass(frozen=True, slots=True)
 class RunConfig:
+    """Store validated runtime selections without exposing API keys in repr."""
+
     goal: str
     success_criteria: str | None
     task_id: str | None
@@ -83,26 +90,29 @@ class RunConfig:
 
 
 class AgentRunner(Protocol):
+    """Run a bounded GUI task and return a structured result."""
+
     def run(
         self,
         goal: str,
         *,
         success_criteria: str | None = None,
         max_steps: int = 10,
-    ) -> AgentRunResult: ...
+    ) -> AgentRunResult:
+        """Run one goal with optional deterministic success criteria."""
+        ...
 
 
 RuntimeFactory: TypeAlias = Callable[[RunConfig, InputFunction], AgentRunner]
 
 
 def _positive_integer(value: str) -> int:
-    try:
-        converted = int(value)
-    except ValueError as error:
-        raise argparse.ArgumentTypeError("must be a positive integer") from error
-    if converted < 1:
-        raise argparse.ArgumentTypeError("must be a positive integer")
-    return converted
+    return parse_integer_at_least(
+        value,
+        minimum=1,
+        message="must be a positive integer",
+        wrap_conversion_error=True,
+    )
 
 
 def _retry_limit(value: str) -> int:
@@ -127,6 +137,7 @@ def _fixed_bounds(region: ScreenRegion) -> Callable[[], ScreenRegion]:
 
 
 def load_task_definitions(path: Path) -> dict[str, TaskDefinition]:
+    """Load strict, uniquely identified version-one task definitions."""
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
@@ -175,6 +186,7 @@ def load_task_definitions(path: Path) -> dict[str, TaskDefinition]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the top-level CLI and its safe desktop run options."""
     parser = argparse.ArgumentParser(
         prog="gui-agent",
         description="Safe Week 4 desktop GUI agent prototype",
@@ -323,6 +335,7 @@ def _fake_planner(goal: str, configured: tuple[AgentAction, ...]) -> FakePlanner
 
 
 def build_runtime(config: RunConfig, input_fn: InputFunction) -> GUIAgent:
+    """Construct a fake, local, or explicitly permitted remote agent runtime."""
     planner: MultimodalPlanner
     observer: ObservationSource
     if config.provider == "fake":
@@ -442,6 +455,7 @@ def main(
     input_fn: InputFunction = input,
     runtime_factory: RuntimeFactory | None = None,
 ) -> int:
+    """Dispatch a subcommand or execute one validated GUI-agent run."""
     parser = build_parser()
     args, remainder = parser.parse_known_args(argv)
     if args.command == "dataset":

@@ -1,3 +1,5 @@
+"""Maintain deterministic local state for simulated desktop applications."""
+
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal, TypeAlias
@@ -17,6 +19,7 @@ class TestbedState:
     __test__ = False
 
     def __init__(self, root: Path, *, fault_profile: FaultProfile = "none") -> None:
+        """Initialize isolated testbed files and optional deterministic faults."""
         if fault_profile not in FAULT_PROFILES:
             raise ValueError(f"unknown fault profile: {fault_profile}")
         self.root = root.resolve()
@@ -59,6 +62,7 @@ class TestbedState:
         }
 
     def activate_app(self, app_id: AppId) -> None:
+        """Activate an application and clear its previous text focus."""
         if app_id not in APP_IDS:
             raise ValueError(f"unknown application: {app_id}")
         self.active_app = app_id
@@ -68,9 +72,11 @@ class TestbedState:
             self.open_browser()
 
     def open_browser(self) -> None:
+        """Mark the simulated browser as open."""
         self.browser_open = True
 
     def focus(self, control_id: str) -> None:
+        """Focus a textbox belonging to the active simulated application."""
         control = CONTROL_BY_ID.get(control_id)
         if control is None:
             raise ValueError(f"unknown control: {control_id}")
@@ -82,6 +88,7 @@ class TestbedState:
         self._selection_all = False
 
     def type_text(self, text: str) -> None:
+        """Append or replace bounded text in the focused control."""
         if self.focused_control is None:
             raise ValueError("text input requires a focused control")
         if not text or len(text) > 500:
@@ -95,6 +102,7 @@ class TestbedState:
         self._sync_text_fields()
 
     def click(self, control_id: str) -> None:
+        """Apply the deterministic behavior of one active-app control."""
         if control_id.startswith("app."):
             self.activate_app(control_id.removeprefix("app."))  # type: ignore[arg-type]
             return
@@ -132,6 +140,7 @@ class TestbedState:
             self.focused_control = control_id
 
     def search(self, query: str) -> str:
+        """Run a local deterministic search with optional injected faults."""
         normalized = query.strip()
         if not normalized or len(normalized) > 200:
             raise ValueError("search query must contain 1 to 200 characters")
@@ -151,12 +160,14 @@ class TestbedState:
         return self.search_result
 
     def complete_delayed_search(self) -> str:
+        """Resolve one pending delayed search result."""
         if self.fault_profile != "delayed" or self.search_query is None:
             raise ValueError("no delayed search is pending")
         self.search_result = f"Search result: {self.search_query}"
         return self.search_result
 
     def open_file(self, filename: str) -> str:
+        """Read a UTF-8 file only from inside the isolated testbed root."""
         candidate = (self.root / filename).resolve()
         if not candidate.is_relative_to(self.root):
             raise ValueError("files must stay inside the testbed directory")
@@ -169,6 +180,7 @@ class TestbedState:
         return content
 
     def send_message(self, text: str) -> None:
+        """Append one bounded message to the local simulated inbox."""
         if not text.strip() or len(text) > 500:
             raise ValueError("message must contain 1 to 500 characters")
         self.messages.append(text)
@@ -182,6 +194,7 @@ class TestbedState:
         self._text_values["messages.body"] = ""
 
     def hotkey(self, keys: Sequence[str]) -> None:
+        """Apply a supported active-app hotkey to simulated state."""
         normalized = tuple(key.strip().lower() for key in keys)
         if not normalized or any(not key for key in normalized):
             raise ValueError("hotkey must contain non-blank keys")
@@ -201,6 +214,7 @@ class TestbedState:
         raise ValueError(f"unsupported hotkey for {self.active_app}: {'+'.join(normalized)}")
 
     def drag(self, control_id: str, value: float) -> None:
+        """Set the simulated settings volume using a normalized drag value."""
         if (
             isinstance(value, bool)
             or not isinstance(value, (int, float))
@@ -213,6 +227,7 @@ class TestbedState:
         self.settings_saved = False
 
     def scroll(self, clicks: int) -> None:
+        """Scroll the active files or editor view within bounded state."""
         if isinstance(clicks, bool) or not isinstance(clicks, int) or not -20 <= clicks <= 20:
             raise ValueError("scroll clicks must be an integer between -20 and 20")
         if self.active_app == "files":
@@ -223,6 +238,7 @@ class TestbedState:
             raise ValueError("scroll is only supported by files and editor")
 
     def wait(self, seconds: float) -> None:
+        """Advance delayed behavior without sleeping or real desktop input."""
         if (
             isinstance(seconds, bool)
             or not isinstance(seconds, (int, float))
@@ -233,9 +249,11 @@ class TestbedState:
             self.complete_delayed_search()
 
     def close(self) -> None:
+        """Mark the local simulated testbed as closed."""
         self.closed = True
 
     def text_value(self, control_id: str) -> str:
+        """Return text stored by a simulated text control."""
         try:
             return self._text_values[control_id]
         except KeyError as error:
@@ -243,9 +261,11 @@ class TestbedState:
 
     @property
     def selection_all(self) -> bool:
+        """Return whether the focused simulated text is selected."""
         return self._selection_all
 
     def snapshot(self) -> dict[str, object]:
+        """Return a serializable snapshot of externally visible testbed state."""
         return {
             "active_app": self.active_app,
             "focused_control": self.focused_control,

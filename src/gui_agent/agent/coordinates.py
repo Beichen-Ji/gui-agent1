@@ -1,3 +1,5 @@
+"""Convert pointer actions between absolute pixels and a normalized grid."""
+
 from gui_agent.agent.types import AgentAction, ClickAction, DragAction, ScrollAction
 from gui_agent.types import ScreenRegion
 

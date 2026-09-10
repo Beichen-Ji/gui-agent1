@@ -1,3 +1,5 @@
+"""Command-line entry point for deterministic dataset normalization."""
+
 import argparse
 import json
 import subprocess
@@ -6,6 +8,7 @@ from collections.abc import Iterable, Sequence
 from itertools import islice
 from pathlib import Path
 
+from gui_agent.cli_args import parse_integer_at_least
 from gui_agent.datasets.mind2web import iter_mind2web
 from gui_agent.datasets.pipeline import AdapterReport, write_dataset
 from gui_agent.datasets.schema import NormalizedGUIRecord
@@ -14,10 +17,11 @@ from gui_agent.datasets.webarena import iter_webarena
 
 
 def _positive_integer(value: str) -> int:
-    converted = int(value)
-    if converted < 1:
-        raise argparse.ArgumentTypeError("must be a positive integer")
-    return converted
+    return parse_integer_at_least(
+        value,
+        minimum=1,
+        message="must be a positive integer",
+    )
 
 
 def _local_revision(path: Path) -> str:
@@ -41,6 +45,7 @@ def _bounded_records(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build dataset-specific normalization commands and shared output options."""
     parser = argparse.ArgumentParser(description="Normalize public GUI agent datasets")
     subparsers = parser.add_subparsers(dest="source", required=True)
 
@@ -64,6 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Normalize one selected dataset and print its deterministic report."""
     args = build_parser().parse_args(argv)
     report = AdapterReport()
     if args.source == "screenagent":

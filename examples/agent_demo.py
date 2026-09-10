@@ -1,3 +1,5 @@
+"""Run a small synthetic agent workflow from the top-level CLI."""
+
 import sys
 from collections.abc import Sequence
 

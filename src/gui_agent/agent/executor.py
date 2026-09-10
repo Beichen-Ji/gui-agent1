@@ -1,3 +1,5 @@
+"""Map approved agent actions to the guarded desktop controller."""
+
 import time
 from collections.abc import Callable
 from typing import Literal
@@ -30,14 +32,17 @@ class ActionExecutor:
         *,
         clock: Callable[[float], None] = time.sleep,
     ) -> None:
+        """Bind the sole controller seam and an injectable wait clock."""
         self._controller = controller
         self._clock = clock
 
     @property
     def controller(self) -> DesktopController:
+        """Return the guarded desktop controller used for dispatch."""
         return self._controller
 
     def execute(self, action: AgentAction, *, step_index: int) -> StepResult:
+        """Execute an approved action and convert failures to a stable boundary."""
         kind = getattr(action, "kind", "unknown")
         try:
             self._dispatch(action)

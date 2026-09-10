@@ -1,3 +1,5 @@
+"""Planning, safety, execution, verification, and recovery APIs."""
+
 from gui_agent.agent.events import (
     AgentEvent,
     CompositeEventSink,

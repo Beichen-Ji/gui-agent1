@@ -1,3 +1,5 @@
+"""Lay out and render deterministic simulated desktops as uint8 BGR images."""
+
 from dataclasses import dataclass
 
 import numpy as np
@@ -17,6 +19,8 @@ _MUTED_RGB = (228, 232, 236)
 
 @dataclass(frozen=True, slots=True)
 class LayoutControl:
+    """Store one control's pixel geometry and fitted label layout."""
+
     id: str
     role: str
     label: str
@@ -109,6 +113,7 @@ def layout_desktop(
     state: TestbedState,
     canvas: tuple[int, int],
 ) -> tuple[LayoutControl, ...]:
+    """Convert normalized active-app controls into deterministic pixel layout."""
     width, height = canvas
     if width < 320 or height < 180:
         raise ValueError("simulation canvas must be at least 320x180")
@@ -136,6 +141,7 @@ def render_desktop(
     state: TestbedState,
     canvas: tuple[int, int],
 ) -> tuple[ImageArray, dict[str, BoundingBox]]:
+    """Render state to BGR pixels and return matching interactive hitboxes."""
     width, height = canvas
     image = Image.new("RGB", (width, height), _BACKGROUND_RGB)
     draw = ImageDraw.Draw(image)

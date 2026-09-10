@@ -1,3 +1,5 @@
+"""Combine capture, OCR localization, annotation, and guarded control."""
+
 import argparse
 import sys
 from collections.abc import Callable, Sequence

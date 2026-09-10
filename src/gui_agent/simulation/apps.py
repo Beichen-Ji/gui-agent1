@@ -1,3 +1,5 @@
+"""Define deterministic simulated applications and normalized controls."""
+
 from dataclasses import dataclass
 from typing import Literal, TypeAlias
 
@@ -25,12 +27,15 @@ APP_IDS: tuple[AppId, ...] = (
 
 @dataclass(frozen=True, slots=True)
 class RelativeBox:
+    """Represent a positive control box in normalized canvas coordinates."""
+
     left: float
     top: float
     right: float
     bottom: float
 
     def __post_init__(self) -> None:
+        """Validate ordered numeric coordinates within the unit square."""
         values = (self.left, self.top, self.right, self.bottom)
         if any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in values):
             raise ValueError("relative coordinates must be numbers")
@@ -42,6 +47,8 @@ class RelativeBox:
 
 @dataclass(frozen=True, slots=True)
 class ControlDefinition:
+    """Describe one stable simulated UI control."""
+
     id: str
     role: ControlRole
     box: RelativeBox
@@ -49,17 +56,21 @@ class ControlDefinition:
     interactive: bool = True
 
     def __post_init__(self) -> None:
+        """Require non-blank control identity and label."""
         if not self.id.strip() or not self.label.strip():
             raise ValueError("control ID and label must not be blank")
 
 
 @dataclass(frozen=True, slots=True)
 class ApplicationDefinition:
+    """Group uniquely identified controls under one simulated application."""
+
     id: AppId
     label: str
     controls: tuple[ControlDefinition, ...]
 
     def __post_init__(self) -> None:
+        """Validate unique, application-prefixed control identifiers."""
         ids = [control.id for control in self.controls]
         if len(ids) != len(set(ids)):
             raise ValueError(f"control IDs must be unique for application {self.id}")
@@ -193,6 +204,7 @@ CONTROL_BY_ID.update({control.id: control for control in APP_TABS})
 
 
 def controls_for(app_id: AppId) -> tuple[ControlDefinition, ...]:
+    """Return application tabs followed by controls for the active app."""
     return APP_TABS + APPLICATION_BY_ID[app_id].controls
 
 

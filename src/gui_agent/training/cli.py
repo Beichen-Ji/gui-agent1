@@ -1,3 +1,5 @@
+"""Build deterministic training data, run QLoRA, and evaluate conditions."""
+
 import argparse
 import hashlib
 import json
@@ -8,6 +10,7 @@ from typing import cast
 from pydantic import ValidationError
 
 from gui_agent.agent.prompts import PROMPT_PROFILES
+from gui_agent.cli_args import parse_integer_at_least
 from gui_agent.datasets.schema import DatasetSource, NormalizedGUIRecord
 from gui_agent.training.config import load_training_config
 from gui_agent.training.dataset import build_training_split, write_training_split
@@ -25,13 +28,15 @@ def _validation_ratio(value: str) -> float:
 
 
 def _non_negative_integer(value: str) -> int:
-    converted = int(value)
-    if converted < 0:
-        raise argparse.ArgumentTypeError("must be a non-negative integer")
-    return converted
+    return parse_integer_at_least(
+        value,
+        minimum=0,
+        message="must be a non-negative integer",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the Week 5 data, training, and evaluation subcommands."""
     parser = argparse.ArgumentParser(description="Build and run Week 5 GUI training data")
     commands = parser.add_subparsers(dest="training_command", required=True)
     build = commands.add_parser("build", help="Build deterministic train/validation JSONL")
@@ -103,6 +108,7 @@ def _load_records(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Dispatch one validated training workflow and print its manifest."""
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.training_command == "evaluate":

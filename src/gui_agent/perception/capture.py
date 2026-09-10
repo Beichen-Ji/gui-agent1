@@ -1,3 +1,5 @@
+"""Capture BGR screenshots from physical or virtual desktop regions."""
+
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -27,18 +29,26 @@ MonitorMapping = Mapping[str, int]
 
 
 class MSSSession(Protocol):
+    """Describe the subset of an MSS session required for capture."""
+
     monitors: Sequence[MonitorMapping]
 
-    def __enter__(self) -> Self: ...
+    def __enter__(self) -> Self:
+        """Enter the MSS capture context."""
+        ...
 
     def __exit__(
         self,
         exc_type: type[BaseException] | None,
         exc_value: BaseException | None,
         traceback: TracebackType | None,
-    ) -> bool | None: ...
+    ) -> bool | None:
+        """Exit the MSS capture context."""
+        ...
 
-    def grab(self, monitor: MonitorMapping) -> object: ...
+    def grab(self, monitor: MonitorMapping) -> object:
+        """Capture one monitor-shaped mapping as an MSS image."""
+        ...
 
 
 MSSFactory = Callable[[], MSSSession]
@@ -76,15 +86,18 @@ class ScreenCapture:
     """Capture physical monitors or absolute virtual-desktop regions with MSS."""
 
     def __init__(self, mss_factory: MSSFactory | None = None) -> None:
+        """Create a capture service with an optional injectable MSS factory."""
         self._mss_factory = mss_factory or _default_mss_factory
 
     def virtual_bounds(self) -> ScreenRegion:
+        """Return the absolute bounds spanning the entire virtual desktop."""
         with self._mss_factory() as session:
             if not session.monitors:
                 raise CaptureError("MSS did not report a virtual desktop")
             return _region_from_monitor(session.monitors[0])
 
     def list_monitors(self) -> tuple[ScreenRegion, ...]:
+        """Return physical monitor regions in MSS index order."""
         with self._mss_factory() as session:
             if not session.monitors:
                 raise CaptureError("MSS did not report a virtual desktop")
@@ -96,6 +109,7 @@ class ScreenCapture:
         *,
         save_path: Path | None = None,
     ) -> ScreenshotResult:
+        """Capture one physical monitor and persist it only when requested."""
         with self._mss_factory() as session:
             maximum = len(session.monitors) - 1
             if isinstance(monitor_index, bool) or not 1 <= monitor_index <= maximum:
@@ -113,6 +127,7 @@ class ScreenCapture:
         *,
         save_path: Path | None = None,
     ) -> ScreenshotResult:
+        """Capture an absolute virtual-desktop region within reported bounds."""
         with self._mss_factory() as session:
             if not session.monitors:
                 raise CaptureError("MSS did not report a virtual desktop")

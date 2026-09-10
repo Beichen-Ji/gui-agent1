@@ -1,3 +1,5 @@
+"""Format strict training examples as Qwen multimodal chat messages."""
+
 import json
 from pathlib import Path
 
@@ -25,6 +27,7 @@ def format_training_messages(
     example: TrainingExample,
     profile: PromptProfile,
 ) -> list[dict[str, object]]:
+    """Map pixel actions to the training grid and build one chat transcript."""
     image_path = Path(example.image_path)
     target = action_to_grid(
         example.target_action,

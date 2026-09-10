@@ -1,3 +1,5 @@
+"""Validated, non-mutating preprocessing profiles for OCR images."""
+
 from dataclasses import dataclass
 from math import isfinite
 from types import MappingProxyType
@@ -11,6 +13,8 @@ from gui_agent.types import ImageArray
 
 @dataclass(frozen=True, slots=True)
 class OCRProfile:
+    """Describe bounded EasyOCR and image-preprocessing parameters."""
+
     decoder: Literal["greedy", "beamsearch"]
     beam_width: int
     batch_size: int
@@ -22,6 +26,7 @@ class OCRProfile:
     preprocessing: Literal["none", "grayscale", "clahe"]
 
     def __post_init__(self) -> None:
+        """Validate decoder, numeric bounds, and preprocessing mode."""
         if self.decoder not in {"greedy", "beamsearch"}:
             raise ValueError("decoder must be greedy or beamsearch")
         self._integer("beam_width", self.beam_width, minimum=1, maximum=20)
@@ -106,6 +111,8 @@ DEFAULT_OCR_PROFILE = "balanced"
 
 @dataclass(frozen=True, slots=True)
 class PreprocessedImage:
+    """Store a processed image and its mapping back to original pixels."""
+
     image: ImageArray
     original_size: tuple[int, int]
     scale_x: float
@@ -113,6 +120,7 @@ class PreprocessedImage:
 
 
 def get_ocr_profile(profile: str | OCRProfile) -> OCRProfile:
+    """Resolve a named profile or return an already validated profile."""
     if isinstance(profile, OCRProfile):
         return profile
     try:
@@ -122,6 +130,7 @@ def get_ocr_profile(profile: str | OCRProfile) -> OCRProfile:
 
 
 def preprocess_image(image: ImageArray, profile: OCRProfile) -> PreprocessedImage:
+    """Return a preprocessed image without modifying the caller's array."""
     if not isinstance(image, np.ndarray) or image.dtype != np.uint8 or image.size == 0:
         raise ValueError("image must be a non-empty uint8 NumPy array")
     if image.ndim not in {2, 3} or (image.ndim == 3 and image.shape[2] != 3):
