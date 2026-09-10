@@ -38,6 +38,7 @@ from gui_agent.agent.types import (
     TypeTextAction,
     WaitAction,
 )
+from gui_agent.cli_args import parse_integer_at_least
 from gui_agent.control.controller import DesktopController
 from gui_agent.perception.capture import ScreenCapture
 from gui_agent.perception.ocr import EasyOCRBackend
@@ -96,13 +97,12 @@ RuntimeFactory: TypeAlias = Callable[[RunConfig, InputFunction], AgentRunner]
 
 
 def _positive_integer(value: str) -> int:
-    try:
-        converted = int(value)
-    except ValueError as error:
-        raise argparse.ArgumentTypeError("must be a positive integer") from error
-    if converted < 1:
-        raise argparse.ArgumentTypeError("must be a positive integer")
-    return converted
+    return parse_integer_at_least(
+        value,
+        minimum=1,
+        message="must be a positive integer",
+        wrap_conversion_error=True,
+    )
 
 
 def _retry_limit(value: str) -> int:

@@ -173,7 +173,7 @@ uv run --no-sync mypy src tests/test_shared_models.py
 
 Expected: all selected tests and both static checks pass.
 
-- [ ] **Step 5: Commit the model consolidation**
+- [x] **Step 5: Commit the model consolidation**
 
 ```powershell
 git add src/gui_agent/_models.py src/gui_agent/agent/types.py `
@@ -199,7 +199,7 @@ git commit -m "refactor: share the strict frozen model policy"
 - Produces: `parse_integer_at_least(value: str, *, minimum: int, message: str, wrap_conversion_error: bool = False) -> int`
 - Preserves: each existing private argparse callback and its exact boundary/error behavior
 
-- [ ] **Step 1: Write failing tests for the shared parser**
+- [x] **Step 1: Write failing tests for the shared parser**
 
 Create `tests/test_cli_args.py` with cases for accepted integers, below-minimum values, wrapped conversion errors, and unwrapped conversion errors:
 
@@ -233,7 +233,7 @@ def test_parse_integer_at_least_can_preserve_raw_conversion_errors() -> None:
         parse_integer_at_least("not-an-int", minimum=0, message="bad")
 ```
 
-- [ ] **Step 2: Verify the new tests fail on the missing module**
+- [x] **Step 2: Verify the new tests fail on the missing module**
 
 ```powershell
 uv run --no-sync pytest tests/test_cli_args.py -q
@@ -241,7 +241,7 @@ uv run --no-sync pytest tests/test_cli_args.py -q
 
 Expected: collection fails with `ModuleNotFoundError: gui_agent.cli_args`.
 
-- [ ] **Step 3: Implement the shared primitive and delegate existing callbacks**
+- [x] **Step 3: Implement the shared primitive and delegate existing callbacks**
 
 Implement the exact conversion policy:
 
@@ -266,7 +266,7 @@ def parse_integer_at_least(
 
 Keep `_positive_integer` and `_non_negative_integer` as thin private wrappers so existing callback names and module seams remain intact. Pass the original message from each caller: root CLI uses `must be a positive integer` and wraps conversion errors; the dataset/training callbacks preserve their current raw conversion behavior; the benchmark preserves `must be positive` / `must be non-negative`.
 
-- [ ] **Step 4: Run CLI tests and compare help output**
+- [x] **Step 4: Run CLI tests and compare help output**
 
 ```powershell
 uv run --no-sync pytest tests/test_cli_args.py tests/test_agent_cli.py `
@@ -281,7 +281,7 @@ uv run --no-sync mypy src tests/test_cli_args.py scripts/benchmark_ocr.py
 
 Expected: all tests and static checks pass; no option names/defaults disappear from CLI help.
 
-- [ ] **Step 5: Commit the CLI consolidation**
+- [x] **Step 5: Commit the CLI consolidation**
 
 ```powershell
 git add src/gui_agent/cli_args.py src/gui_agent/cli.py `

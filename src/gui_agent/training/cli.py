@@ -8,6 +8,7 @@ from typing import cast
 from pydantic import ValidationError
 
 from gui_agent.agent.prompts import PROMPT_PROFILES
+from gui_agent.cli_args import parse_integer_at_least
 from gui_agent.datasets.schema import DatasetSource, NormalizedGUIRecord
 from gui_agent.training.config import load_training_config
 from gui_agent.training.dataset import build_training_split, write_training_split
@@ -25,10 +26,11 @@ def _validation_ratio(value: str) -> float:
 
 
 def _non_negative_integer(value: str) -> int:
-    converted = int(value)
-    if converted < 0:
-        raise argparse.ArgumentTypeError("must be a non-negative integer")
-    return converted
+    return parse_integer_at_least(
+        value,
+        minimum=0,
+        message="must be a non-negative integer",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
