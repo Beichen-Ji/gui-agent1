@@ -540,11 +540,13 @@ uv run gui-agent evaluate `
 
 在 `src/gui_agent/cli.py` 中按现有 `dataset` / `training` / `model-smoke` 的转发模式注册 `evaluate` 子命令。
 
-- [ ] **Step 4: 正式跑批**
+- [x] **Step 4: 正式跑批**
 
 先 `--dry-run-plan` 核对运行数，再 fake planner 全套件确认管线，最后跑真实 Qwen 矩阵。原始 JSON 落在被忽略的 `artifacts/week7/`。
 
-- [ ] **Step 5: GREEN 与提交**
+完成记录（2026-09-09）：正式 Qwen 矩阵生成 6 份报告、共 120 次运行，120 次均为有效样本。主 OCR 三个分辨率的成功率依次为 10%、5%、10%；oracle 上界为 5%；`week5-grounded` 与 Week 5 adapter 条件均为 0%。这些结果保留原始失败与停止判定，不放宽验证规则。
+
+- [x] **Step 5: GREEN 与提交**
 
 ```powershell
 uv run pytest tests/test_agent_cli.py -v --basetemp artifacts/pytest-week7-t5
@@ -565,11 +567,11 @@ git commit -m "feat: evaluate across resolutions, applications, and conditions"
 
 **Produces:** 6 张可复现图表，PNG + SVG 落在被忽略的 `artifacts/week7/figures/`。
 
-- [ ] **Step 1: RED**
+- [x] **Step 1: RED**
 
 覆盖：所有绘图函数在 `matplotlib.use("Agg")` 下运行并产出非空文件；空数据抛明确异常而不是画空图；坐标轴标签、单位与样本量注记存在；无 matplotlib 时用 `pytest.importorskip` 跳过（CI 默认不装 `viz`）。
 
-- [ ] **Step 2: 六张图**
+- [x] **Step 2: 六张图**
 
 1. 成功率 × 难度（分组柱状，三个分辨率并列）
 2. 成功率 × 应用（分组柱状）
@@ -580,7 +582,7 @@ git commit -m "feat: evaluate across resolutions, applications, and conditions"
 
 **每张图必须标注 `n=20`**，并在标题或副标题写明“合成模拟桌面，非真实桌面”。使用色盲安全配色，不要仅靠颜色区分（同时用图案或直接标注数值）。
 
-- [ ] **Step 3: 依赖隔离**
+- [x] **Step 3: 依赖隔离**
 
 ```toml
 viz = [
@@ -590,7 +592,7 @@ viz = [
 
 CI 的 `uv sync` 不加 `--extra viz`，保持 CI 无 GUI 依赖。
 
-- [ ] **Step 4: GREEN 与提交**
+- [x] **Step 4: GREEN 与提交**
 
 ```powershell
 uv sync --extra viz
