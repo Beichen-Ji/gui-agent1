@@ -1,8 +1,8 @@
-import hashlib
 from pathlib import Path
 from typing import Protocol
 
 from gui_agent.agent.types import Observation
+from gui_agent.perception.fingerprint import image_fingerprint
 from gui_agent.perception.ocr import OCRBackend
 from gui_agent.types import OCRDetection, Point, ScreenRegion, ScreenshotResult
 
@@ -81,13 +81,13 @@ class ObservationBuilder:
         self._cache_detections = ()
 
     def _frame_cache_key(self, screenshot: ScreenshotResult) -> tuple[str, Point, float, str]:
-        image = screenshot.image
-        digest = hashlib.sha256()
-        digest.update(str(image.shape).encode("ascii"))
-        digest.update(str(image.dtype).encode("ascii"))
-        digest.update(image.tobytes())
         profile = repr(getattr(self._ocr, "cache_token", type(self._ocr).__qualname__))
-        return (digest.hexdigest(), screenshot.origin, self._min_confidence, profile)
+        return (
+            image_fingerprint(screenshot.image),
+            screenshot.origin,
+            self._min_confidence,
+            profile,
+        )
 
 
 __all__ = ["CaptureBackend", "ObservationBuilder"]

@@ -13,6 +13,7 @@ import numpy as np
 
 from gui_agent.agent.observation import ObservationBuilder
 from gui_agent.perception.ocr import OCRBackend
+from gui_agent.perception.text import normalize_text
 from gui_agent.types import (
     BoundingBox,
     ImageArray,
@@ -20,10 +21,6 @@ from gui_agent.types import (
     Point,
     ScreenshotResult,
 )
-
-
-def normalize_text(value: str) -> str:
-    return " ".join(value.split()).casefold()
 
 
 def box_iou(first: BoundingBox, second: BoundingBox) -> float:

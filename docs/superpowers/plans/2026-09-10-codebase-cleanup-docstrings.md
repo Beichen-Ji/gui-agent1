@@ -378,7 +378,7 @@ git commit -m "refactor: share lazy multimodal model loaders"
 - Preserves: `gui_agent.perception.benchmark.normalize_text` as an importable public symbol
 - Preserves: OCR summary hashes, frame-change detection, and observation cache keys
 
-- [ ] **Step 1: Write failing shared-helper tests**
+- [x] **Step 1: Write failing shared-helper tests**
 
 Test whitespace/case normalization and fingerprint sensitivity to value, shape, and dtype:
 
@@ -398,7 +398,7 @@ def test_image_fingerprint_tracks_shape_dtype_and_bytes() -> None:
     assert image_fingerprint(base) != image_fingerprint(base.reshape(3, 2, 3))
 ```
 
-- [ ] **Step 2: Verify both tests fail on missing modules**
+- [x] **Step 2: Verify both tests fail on missing modules**
 
 ```powershell
 uv run --no-sync pytest tests/test_perception_text.py `
@@ -407,15 +407,15 @@ uv run --no-sync pytest tests/test_perception_text.py `
 
 Expected: collection fails because the new perception modules do not exist.
 
-- [ ] **Step 3: Implement and migrate normalization**
+- [x] **Step 3: Implement and migrate normalization**
 
 Implement `normalize_text` as exactly `" ".join(value.split()).casefold()`. Import it into `benchmark.py` without aliasing so the existing public import path still resolves. Use it from verification and event metadata without changing detection order, blank filtering, separators, or hash encoding.
 
-- [ ] **Step 4: Implement and migrate fingerprints**
+- [x] **Step 4: Implement and migrate fingerprints**
 
 Implement `image_fingerprint` using a contiguous NumPy view and the existing SHA-256 inputs in the same order: ASCII shape, ASCII dtype, then image bytes. Observation cache keys must continue to add screenshot origin, confidence, and OCR cache token outside the shared image digest.
 
-- [ ] **Step 5: Run perception and agent regression tests**
+- [x] **Step 5: Run perception and agent regression tests**
 
 ```powershell
 uv run --no-sync pytest tests/test_perception_text.py `
@@ -430,7 +430,7 @@ uv run --no-sync mypy src tests/test_perception_text.py `
 
 Expected: all selected tests and static checks pass, including existing benchmark imports.
 
-- [ ] **Step 6: Commit the perception-helper consolidation**
+- [x] **Step 6: Commit the perception-helper consolidation**
 
 ```powershell
 git add src/gui_agent/perception/text.py src/gui_agent/perception/fingerprint.py `

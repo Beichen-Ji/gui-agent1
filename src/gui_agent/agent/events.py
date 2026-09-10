@@ -10,6 +10,7 @@ from types import MappingProxyType
 from typing import Literal, Protocol, TextIO
 
 from gui_agent.agent.types import AgentAction, Observation, TypeTextAction
+from gui_agent.perception.text import normalize_text
 
 EventKind = Literal[
     "run_started",
@@ -146,8 +147,7 @@ def action_metadata(action: AgentAction) -> dict[str, object]:
 
 def observation_metadata(observation: Observation) -> dict[str, object]:
     normalized = "\n".join(
-        " ".join(detection.text.split()).casefold()
-        for detection in observation.detections
+        normalize_text(detection.text) for detection in observation.detections
     )
     screenshot = observation.screenshot
     return {

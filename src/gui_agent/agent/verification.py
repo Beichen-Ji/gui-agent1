@@ -1,9 +1,6 @@
-import hashlib
 import re
 from collections.abc import Iterable
 from typing import Protocol
-
-import numpy as np
 
 from gui_agent.agent.types import (
     AgentDecision,
@@ -12,6 +9,8 @@ from gui_agent.agent.types import (
     StepResult,
     VerificationResult,
 )
+from gui_agent.perception.fingerprint import image_fingerprint
+from gui_agent.perception.text import normalize_text
 
 _QUOTED_TEXT = re.compile(r"['\"]([^'\"]+)['\"]")
 _ABSENCE_MARKERS = (
@@ -37,19 +36,14 @@ class OutcomeVerifier(Protocol):
 
 def _normalized_text(observation: Observation) -> tuple[str, ...]:
     return tuple(
-        " ".join(detection.text.split()).casefold()
+        normalize_text(detection.text)
         for detection in observation.detections
         if detection.text.strip()
     )
 
 
 def _frame_fingerprint(observation: Observation) -> str:
-    image = np.ascontiguousarray(observation.screenshot.image)
-    digest = hashlib.sha256()
-    digest.update(str(image.shape).encode("ascii"))
-    digest.update(str(image.dtype).encode("ascii"))
-    digest.update(image.tobytes())
-    return digest.hexdigest()
+    return image_fingerprint(observation.screenshot.image)
 
 
 class RuleBasedOutcomeVerifier:
