@@ -1,3 +1,5 @@
+"""Build bounded, redacted prompts grounded in the current observation."""
+
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -13,6 +15,8 @@ _LIKELY_SECRET = re.compile(r"(?i)\b(?:sk|key|token)-[a-z0-9_-]{8,}\b")
 
 @dataclass(frozen=True, slots=True)
 class PromptProfile:
+    """Group stable system, planning, action, and coordinate instructions."""
+
     id: str
     system_prompt: str
     plan_instruction: str
@@ -59,6 +63,7 @@ PROMPT_PROFILES: Mapping[str, PromptProfile] = MappingProxyType(
 
 
 def get_prompt_profile(profile: str | PromptProfile) -> PromptProfile:
+    """Resolve a named profile or return an existing profile object."""
     if isinstance(profile, PromptProfile):
         return profile
     try:
@@ -102,6 +107,7 @@ def build_plan_prompt(
     *,
     profile: str | PromptProfile = "week4-baseline",
 ) -> str:
+    """Build a redacted initial-plan prompt from visible evidence."""
     selected = get_prompt_profile(profile)
     safe_goal = _safe_text(goal, max_length=1000)
     allowed = ", ".join(_ALLOWED_ACTIONS)
@@ -120,6 +126,7 @@ def build_action_prompt(
     *,
     profile: str | PromptProfile = "week4-baseline",
 ) -> str:
+    """Build a redacted next-action prompt with bounded recent history."""
     selected = get_prompt_profile(profile)
     descriptions = {step.id: step.description for step in state.plan.steps}
     completed_lines = "\n".join(
@@ -176,6 +183,7 @@ def build_replan_prompt(
     *,
     profile: str | PromptProfile = "week4-baseline",
 ) -> str:
+    """Build a redacted prompt that preserves completed plan facts."""
     selected = get_prompt_profile(profile)
     descriptions = {step.id: step.description for step in state.plan.steps}
     completed = "\n".join(

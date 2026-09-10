@@ -617,7 +617,7 @@ git commit -m "docs: explain core perception and control contracts"
 **Interfaces:**
 - Preserves all agent loop, planner, policy, retry, verification, event, and Qwen behavior
 
-- [ ] **Step 1: Capture agent documentation failures**
+- [x] **Step 1: Capture agent documentation failures**
 
 ```powershell
 uv run --no-sync ruff check src/gui_agent/agent --select D `
@@ -626,7 +626,7 @@ uv run --no-sync ruff check src/gui_agent/agent --select D `
 
 Expected: non-zero before docstrings are added.
 
-- [ ] **Step 2: Document agent contracts and safety boundaries**
+- [x] **Step 2: Document agent contracts and safety boundaries**
 
 Document all public APIs and add targeted invariant comments. The first sentences for safety-sensitive classes must be explicit:
 
@@ -641,7 +641,7 @@ class PlannedActionExecutor:
 
 Explain strict action schemas, plan-step identity, normalized-to-pixel coordinates, fail-closed confirmation, redacted events, bounded retry/replan behavior, verification evidence, lazy model loading, and prompt-injection-resistant observation summaries. Do not expose input text in comments or examples.
 
-- [ ] **Step 3: Run agent documentation and behavior gates**
+- [x] **Step 3: Run agent documentation and behavior gates**
 
 ```powershell
 uv run --no-sync ruff check src/gui_agent/agent --select D `
@@ -656,7 +656,7 @@ uv run --no-sync pytest tests/test_agent_cli.py tests/test_agent_coordinates.py 
 
 Expected: zero documentation diagnostics and all selected tests pass.
 
-- [ ] **Step 4: Commit agent documentation**
+- [x] **Step 4: Commit agent documentation**
 
 ```powershell
 git add src/gui_agent/agent

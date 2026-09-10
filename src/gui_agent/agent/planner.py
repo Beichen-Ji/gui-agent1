@@ -1,3 +1,5 @@
+"""Validated fake, local, and remote multimodal planner adapters."""
+
 import base64
 import json
 from collections import deque
@@ -31,14 +33,24 @@ class RemoteImagePermissionError(PlannerError):
 
 @runtime_checkable
 class MultimodalPlanner(Protocol):
-    def create_plan(self, goal: str, observation: Observation) -> TaskPlan: ...
+    """Create, advance, and revise structured plans from visual state."""
 
-    def next_action(self, state: AgentState) -> AgentDecision: ...
+    def create_plan(self, goal: str, observation: Observation) -> TaskPlan:
+        """Create an initial structured plan for a goal and observation."""
+        ...
 
-    def revise_plan(self, state: AgentState, failure: ReplanContext) -> TaskPlan: ...
+    def next_action(self, state: AgentState) -> AgentDecision:
+        """Choose one validated action for the active plan step."""
+        ...
+
+    def revise_plan(self, state: AgentState, failure: ReplanContext) -> TaskPlan:
+        """Revise unfinished steps using redacted failure context."""
+        ...
 
 
 class FakePlanner:
+    """Return deterministic plans and decisions for tests and offline demos."""
+
     def __init__(
         self,
         *,
@@ -46,23 +58,27 @@ class FakePlanner:
         decisions: Iterable[AgentDecision],
         revised_plans: Iterable[TaskPlan] = (),
     ) -> None:
+        """Configure finite queues of deterministic planner outputs."""
         self._plan = plan
         self._decisions = deque(decisions)
         self._revised_plans = deque(revised_plans)
 
     def create_plan(self, goal: str, observation: Observation) -> TaskPlan:
+        """Return the configured initial plan for a non-blank goal."""
         if not goal.strip():
             raise PlannerError("goal must not be blank")
         del observation
         return self._plan
 
     def next_action(self, state: AgentState) -> AgentDecision:
+        """Consume the next configured decision."""
         del state
         if not self._decisions:
             raise PlannerError("fake planner has no configured decision remaining")
         return self._decisions.popleft()
 
     def revise_plan(self, state: AgentState, failure: ReplanContext) -> TaskPlan:
+        """Consume the next configured revised plan."""
         del state, failure
         if not self._revised_plans:
             raise PlannerError("fake planner has no configured revised plan remaining")
@@ -81,6 +97,8 @@ def _png_data_url(observation: Observation) -> str:
 
 
 class LangChainPlanner:
+    """Call a remote structured-output model only with explicit image consent."""
+
     def __init__(
         self,
         *,
@@ -90,6 +108,7 @@ class LangChainPlanner:
         allow_remote_image: bool = False,
         chat_model: object | None = None,
     ) -> None:
+        """Configure a remote chat model and its screenshot permission boundary."""
         if not model_name.strip():
             raise ValueError("model_name must not be blank")
         if chat_model is None:
@@ -145,9 +164,11 @@ class LangChainPlanner:
             raise PlannerError(f"remote model failed to produce {schema.__name__}") from exc
 
     def create_plan(self, goal: str, observation: Observation) -> TaskPlan:
+        """Request and validate an initial task plan."""
         return self._invoke(TaskPlan, build_plan_prompt(goal, observation), observation)
 
     def next_action(self, state: AgentState) -> AgentDecision:
+        """Request and validate one action for the current state."""
         return self._invoke(
             AgentDecision,
             build_action_prompt(state),
@@ -155,6 +176,7 @@ class LangChainPlanner:
         )
 
     def revise_plan(self, state: AgentState, failure: ReplanContext) -> TaskPlan:
+        """Request and validate a revision of unfinished plan steps."""
         return self._invoke(
             TaskPlan,
             build_replan_prompt(state, failure),

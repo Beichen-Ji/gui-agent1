@@ -1,3 +1,5 @@
+"""Strict action, plan, progress, and runtime state schemas for the agent."""
+
 from dataclasses import dataclass
 from typing import Annotated, Literal, TypeAlias
 
@@ -8,6 +10,8 @@ from gui_agent.types import OCRDetection, ScreenshotResult
 
 
 class ClickAction(StrictFrozenModel):
+    """Request one or two mouse clicks at absolute pixel coordinates."""
+
     kind: Literal["click"] = "click"
     x: int
     y: int
@@ -16,16 +20,22 @@ class ClickAction(StrictFrozenModel):
 
 
 class TypeTextAction(StrictFrozenModel):
+    """Request bounded non-empty text entry without logging its content."""
+
     kind: Literal["type_text"] = "type_text"
     text: str = Field(min_length=1, max_length=500)
 
 
 class HotkeyAction(StrictFrozenModel):
+    """Request a bounded sequence of keyboard keys."""
+
     kind: Literal["hotkey"] = "hotkey"
     keys: tuple[str, ...] = Field(min_length=1, max_length=4)
 
 
 class ScrollAction(StrictFrozenModel):
+    """Request bounded scrolling at an optional absolute pixel coordinate."""
+
     kind: Literal["scroll"] = "scroll"
     clicks: int = Field(ge=-20, le=20)
     x: int | None = None
@@ -33,6 +43,8 @@ class ScrollAction(StrictFrozenModel):
 
 
 class DragAction(StrictFrozenModel):
+    """Request a bounded-duration drag between absolute pixel coordinates."""
+
     kind: Literal["drag"] = "drag"
     start_x: int
     start_y: int
@@ -42,11 +54,15 @@ class DragAction(StrictFrozenModel):
 
 
 class WaitAction(StrictFrozenModel):
+    """Request a bounded pause without desktop input."""
+
     kind: Literal["wait"] = "wait"
     seconds: float = Field(ge=0.0, le=5.0)
 
 
 class FinishAction(StrictFrozenModel):
+    """Declare task completion or failure with a bounded summary."""
+
     kind: Literal["finish"] = "finish"
     success: bool
     summary: str = Field(min_length=1, max_length=500)
@@ -77,11 +93,15 @@ FailureReason: TypeAlias = Literal[
 
 
 class TaskStep(StrictFrozenModel):
+    """Identify one ordered, human-readable step in a task plan."""
+
     id: str = Field(min_length=1, max_length=64)
     description: str = Field(min_length=1, max_length=500)
 
 
 class TaskPlan(StrictFrozenModel):
+    """Store a bounded plan whose step identifiers are unique."""
+
     goal: str = Field(min_length=1, max_length=1000)
     steps: tuple[TaskStep, ...] = Field(min_length=1, max_length=20)
 
@@ -94,12 +114,16 @@ class TaskPlan(StrictFrozenModel):
 
 
 class StepProgress(StrictFrozenModel):
+    """Track status and attempt count for one plan step."""
+
     step_id: str = Field(min_length=1, max_length=64)
     status: Literal["pending", "active", "completed", "failed"]
     attempts: int = Field(default=0, ge=0)
 
 
 class PlanProgress(StrictFrozenModel):
+    """Track one active step and bounded replanning across an ordered plan."""
+
     steps: tuple[StepProgress, ...] = Field(min_length=1, max_length=20)
     active_step_id: str = Field(min_length=1, max_length=64)
     replan_count: int = Field(default=0, ge=0, le=1)
@@ -126,6 +150,7 @@ class PlanProgress(StrictFrozenModel):
 
     @classmethod
     def from_plan(cls, plan: TaskPlan) -> "PlanProgress":
+        """Create progress with the first plan step active."""
         return cls(
             steps=tuple(
                 StepProgress(
@@ -139,15 +164,18 @@ class PlanProgress(StrictFrozenModel):
 
     @property
     def is_complete(self) -> bool:
+        """Return whether every plan step completed successfully."""
         return all(step.status == "completed" for step in self.steps)
 
     @property
     def completed_step_ids(self) -> tuple[str, ...]:
+        """Return completed step identifiers in plan order."""
         return tuple(
             step.step_id for step in self.steps if step.status == "completed"
         )
 
     def record_attempt(self, step_id: str) -> "PlanProgress":
+        """Increment the active step's attempt count immutably."""
         index = self._step_index(step_id)
         step = self.steps[index]
         if step.status != "active" or step_id != self.active_step_id:
@@ -163,6 +191,7 @@ class PlanProgress(StrictFrozenModel):
         *,
         verified_step_id: str | None = None,
     ) -> "PlanProgress":
+        """Keep or advance the active step after verified completion."""
         requested_index = self._step_index(step_id)
         requested = self.steps[requested_index]
         if requested.status == "completed":
@@ -188,6 +217,7 @@ class PlanProgress(StrictFrozenModel):
         )
 
     def complete_active(self) -> "PlanProgress":
+        """Complete the active step and activate the next pending step."""
         active_index = self._step_index(self.active_step_id)
         active = self.steps[active_index]
         if active.status != "active":
@@ -213,6 +243,7 @@ class PlanProgress(StrictFrozenModel):
         )
 
     def fail_active(self) -> "PlanProgress":
+        """Mark the active step failed without changing terminal progress."""
         index = self._step_index(self.active_step_id)
         active = self.steps[index]
         if active.status != "active":
@@ -232,6 +263,8 @@ class PlanProgress(StrictFrozenModel):
 
 
 class ReplanContext(StrictFrozenModel):
+    """Describe the redacted failure evidence supplied for replanning."""
+
     reason_code: str = Field(min_length=1, max_length=64)
     summary: str = Field(min_length=1, max_length=500)
 
@@ -289,6 +322,8 @@ def reconcile_revised_plan(
 
 
 class AgentDecision(StrictFrozenModel):
+    """Bind one proposed action and expected outcome to the active plan step."""
+
     current_step_id: str = Field(min_length=1, max_length=64)
     rationale_summary: str = Field(min_length=1, max_length=500)
     action: AgentAction
@@ -296,6 +331,8 @@ class AgentDecision(StrictFrozenModel):
 
 
 class StepResult(StrictFrozenModel):
+    """Record the execution status of one proposed agent action."""
+
     step_index: int = Field(ge=0)
     action: AgentAction
     status: Literal["dry_run", "executed", "denied", "failed"]
@@ -303,6 +340,8 @@ class StepResult(StrictFrozenModel):
 
 
 class VerificationResult(StrictFrozenModel):
+    """Record outcome evidence and a structured failure reason."""
+
     passed: bool
     summary: str = Field(min_length=1, max_length=500)
     reason_code: FailureReason | None = None
@@ -321,6 +360,8 @@ class VerificationResult(StrictFrozenModel):
 
 
 class RetryDecision(StrictFrozenModel):
+    """Describe whether and when a failed step may be retried."""
+
     retry: bool
     delay_seconds: float = Field(default=0.0, ge=0.0, le=5.0)
     reason_code: FailureReason
@@ -334,17 +375,22 @@ class RetryDecision(StrictFrozenModel):
 
 @dataclass(frozen=True, slots=True)
 class Observation:
+    """Pair one screenshot with absolute OCR detections and a step index."""
+
     screenshot: ScreenshotResult
     detections: tuple[OCRDetection, ...]
     step_index: int
 
     def __post_init__(self) -> None:
+        """Reject negative observation step indices."""
         if self.step_index < 0:
             raise ValueError("step_index must be non-negative")
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class AgentState:
+    """Store one immutable planning snapshot and its accumulated history."""
+
     goal: str
     plan: TaskPlan
     progress: PlanProgress
@@ -363,6 +409,7 @@ class AgentState:
         progress: PlanProgress | None = None,
         replan_context: ReplanContext | None = None,
     ) -> None:
+        """Create state and derive initial progress when none is supplied."""
         object.__setattr__(self, "goal", goal)
         object.__setattr__(self, "plan", plan)
         object.__setattr__(self, "progress", progress or PlanProgress.from_plan(plan))
@@ -373,6 +420,7 @@ class AgentState:
         self.__post_init__()
 
     def __post_init__(self) -> None:
+        """Validate a non-blank goal and exact plan-progress alignment."""
         if not self.goal.strip():
             raise ValueError("goal must not be blank")
         plan_ids = tuple(step.id for step in self.plan.steps)

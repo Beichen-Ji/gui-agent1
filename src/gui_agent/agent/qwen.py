@@ -1,3 +1,5 @@
+"""Local Qwen multimodal planner with lazy loading and adapter validation."""
+
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -128,6 +130,8 @@ def _desktop_decision(
 
 
 class QwenTransformersPlanner:
+    """Produce strict plans and pixel actions with a local Qwen model."""
+
     def __init__(
         self,
         *,
@@ -143,6 +147,7 @@ class QwenTransformersPlanner:
         adapter_path: Path | None = None,
         adapter_loader: AdapterLoader = _default_adapter_loader,
     ) -> None:
+        """Configure lazy model loading and validate optional adapter provenance."""
         if not model_name.strip():
             raise ValueError("model_name must not be blank")
         if isinstance(max_image_side, bool) or max_image_side < 64:
@@ -284,6 +289,7 @@ class QwenTransformersPlanner:
             raise PlannerError(f"local model failed to produce {schema.__name__}") from exc
 
     def create_plan(self, goal: str, observation: Observation) -> TaskPlan:
+        """Generate and strictly validate an initial plan."""
         return self._invoke(
             TaskPlan,
             build_plan_prompt(goal, observation, profile=self._prompt_profile),
@@ -291,6 +297,7 @@ class QwenTransformersPlanner:
         )
 
     def next_action(self, state: AgentState) -> AgentDecision:
+        """Generate one decision and map its grid coordinates to pixels."""
         return self._invoke(
             AgentDecision,
             build_action_prompt(state, profile=self._prompt_profile),
@@ -298,6 +305,7 @@ class QwenTransformersPlanner:
         )
 
     def revise_plan(self, state: AgentState, failure: ReplanContext) -> TaskPlan:
+        """Generate a strict revision using bounded redacted failure context."""
         return self._invoke(
             TaskPlan,
             build_replan_prompt(state, failure, profile=self._prompt_profile),

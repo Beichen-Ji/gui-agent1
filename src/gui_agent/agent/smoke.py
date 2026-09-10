@@ -1,3 +1,5 @@
+"""Run planner smoke tests against a synthetic image without desktop capture."""
+
 import argparse
 import os
 import sys
@@ -26,6 +28,7 @@ from gui_agent.types import BoundingBox, OCRDetection, Point, ScreenshotResult
 
 
 def synthetic_observation() -> Observation:
+    """Render a deterministic synthetic Browser control and OCR detection."""
     image = np.full((360, 640, 3), 245, dtype=np.uint8)
     cv2.rectangle(image, (40, 60), (180, 130), (230, 230, 230), thickness=-1)
     cv2.rectangle(image, (40, 60), (180, 130), (40, 90, 180), thickness=2)
@@ -64,6 +67,7 @@ def _fake_planner() -> FakePlanner:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the explicitly synthetic planner smoke-test CLI."""
     parser = argparse.ArgumentParser(
         description="Run one plan and action inference against a synthetic GUI"
     )
@@ -81,6 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run one synthetic plan-and-action inference and print validated JSON."""
     parser = build_parser()
     args = parser.parse_args(argv)
     if not args.synthetic:
