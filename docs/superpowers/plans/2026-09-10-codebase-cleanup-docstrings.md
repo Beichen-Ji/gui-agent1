@@ -813,11 +813,11 @@ git add pyproject.toml docs/test-reports/week8-codebase-cleanup-report.md `
 git commit -m "chore: enforce documented production APIs"
 ```
 
-- [ ] **Step 6: Re-run final verification on the committed tree**
+- [x] **Step 6: Re-run final verification on the committed tree**
 
 Repeat Step 3 after the commit. Do not rely on the pre-commit run.
 
-- [ ] **Step 7: Push only the completed branch**
+- [x] **Step 7: Push only the completed branch**
 
 ```powershell
 git push --set-upstream origin codex/week8-codebase-cleanup
