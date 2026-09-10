@@ -2,6 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, cast
 
+from gui_agent.model_loading import load_multimodal_model, load_processor
 from gui_agent.training.config import LoRATrainingConfig
 
 Loader = Callable[..., object]
@@ -32,16 +33,11 @@ def _default_quantization_factory(**kwargs: object) -> object:
 
 
 def _default_processor_loader(model_name: str, **kwargs: object) -> object:
-    from transformers import AutoProcessor
-
-    loader = cast(Loader, AutoProcessor.from_pretrained)
-    return loader(model_name, **kwargs)
+    return load_processor(model_name, **kwargs)
 
 
 def _default_model_loader(model_name: str, **kwargs: object) -> object:
-    from transformers import AutoModelForMultimodalLM
-
-    return AutoModelForMultimodalLM.from_pretrained(model_name, **kwargs)
+    return load_multimodal_model(model_name, **kwargs)
 
 
 def load_qlora_model(

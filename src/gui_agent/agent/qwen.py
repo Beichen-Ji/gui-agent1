@@ -24,6 +24,7 @@ from gui_agent.agent.types import (
     ReplanContext,
     TaskPlan,
 )
+from gui_agent.model_loading import load_multimodal_model, load_processor
 from gui_agent.provenance import file_sha256, read_json_object, resolve_adapter_layout
 from gui_agent.types import ScreenRegion
 
@@ -39,16 +40,11 @@ class _AdapterSpec:
 
 
 def _default_processor_loader(model_name: str, **kwargs: object) -> object:
-    from transformers import AutoProcessor
-
-    loader = cast(Callable[..., object], AutoProcessor.from_pretrained)
-    return loader(model_name, **kwargs)
+    return load_processor(model_name, **kwargs)
 
 
 def _default_model_loader(model_name: str, **kwargs: object) -> object:
-    from transformers import AutoModelForMultimodalLM
-
-    return AutoModelForMultimodalLM.from_pretrained(model_name, **kwargs)
+    return load_multimodal_model(model_name, **kwargs)
 
 
 def _default_adapter_loader(model: object, adapter_dir: Path) -> object:

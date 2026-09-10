@@ -305,7 +305,7 @@ git commit -m "refactor: share CLI integer validation"
 - Produces: `load_multimodal_model(model_name: str, **kwargs: object) -> object`
 - Preserves: lazy optional imports and both existing dependency-injection defaults
 
-- [ ] **Step 1: Write failing loader tests**
+- [x] **Step 1: Write failing loader tests**
 
 Use a fake `transformers` module to verify forwarded model names and keyword arguments without loading a real model:
 
@@ -325,7 +325,7 @@ def test_shared_model_loaders_forward_arguments(monkeypatch: pytest.MonkeyPatch)
     assert model.calls == [("model-id", {"dtype": "bf16"})]
 ```
 
-- [ ] **Step 2: Verify the loader test fails because the module is missing**
+- [x] **Step 2: Verify the loader test fails because the module is missing**
 
 ```powershell
 uv run --no-sync pytest tests/test_model_loading.py -q
@@ -333,11 +333,11 @@ uv run --no-sync pytest tests/test_model_loading.py -q
 
 Expected: collection fails with `ModuleNotFoundError: gui_agent.model_loading`.
 
-- [ ] **Step 3: Implement the shared lazy loaders and retain wrappers**
+- [x] **Step 3: Implement the shared lazy loaders and retain wrappers**
 
 Move only the `AutoProcessor.from_pretrained` and `AutoModelForMultimodalLM.from_pretrained` logic into the new module. Keep `_default_processor_loader` and `_default_model_loader` in `agent/qwen.py` and `training/lora.py` as one-line delegates so function defaults, monkeypatch seams, and private module structure remain stable.
 
-- [ ] **Step 4: Run loader, planner, and LoRA tests**
+- [x] **Step 4: Run loader, planner, and LoRA tests**
 
 ```powershell
 uv run --no-sync pytest tests/test_model_loading.py tests/test_agent_planner.py `
@@ -350,7 +350,7 @@ uv run --no-sync mypy src tests/test_model_loading.py
 
 Expected: all selected tests and static checks pass without importing real model weights.
 
-- [ ] **Step 5: Commit the model-loader consolidation**
+- [x] **Step 5: Commit the model-loader consolidation**
 
 ```powershell
 git add src/gui_agent/model_loading.py src/gui_agent/agent/qwen.py `
