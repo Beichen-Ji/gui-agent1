@@ -1,3 +1,5 @@
+"""Calculate aggregate Week 7 task success, error, and timing metrics."""
+
 import statistics
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
@@ -13,6 +15,8 @@ from gui_agent.simulation.apps import AppId
 
 
 class TimingBreakdown(StrictFrozenModel):
+    """Store non-negative wall, planner, perception, and execution timing."""
+
     wall_ms: float = Field(ge=0.0)
     planner_ms: float = Field(ge=0.0)
     perception_ms: float = Field(ge=0.0)
@@ -20,6 +24,8 @@ class TimingBreakdown(StrictFrozenModel):
 
 
 class TaskOutcome(StrictFrozenModel):
+    """Store one task's status, failure reason, progress, and timings."""
+
     task_id: str = Field(min_length=1, max_length=80)
     app: AppId
     difficulty: Difficulty
@@ -51,6 +57,8 @@ class TaskOutcome(StrictFrozenModel):
 
 
 class SuiteMetrics(StrictFrozenModel):
+    """Store aggregate success, error, progress, and latency statistics."""
+
     task_count: int = Field(ge=0)
     valid_count: int = Field(ge=0)
     success_rate: float = Field(ge=0.0, le=1.0)
@@ -100,6 +108,7 @@ def _percentile(values: Sequence[float], quantile: float) -> float:
 
 
 def calculate_suite_metrics(outcomes: Iterable[TaskOutcome]) -> SuiteMetrics:
+    """Calculate metrics while excluding explicitly invalid outcomes."""
     all_outcomes = tuple(outcomes)
     valid = tuple(outcome for outcome in all_outcomes if outcome.status != "invalid")
     successes = tuple(outcome for outcome in valid if outcome.status == "succeeded")
@@ -152,6 +161,7 @@ def outcome_from_run(
     run: AgentRunResult,
     timing: TimingBreakdown,
 ) -> TaskOutcome:
+    """Convert an agent run and timing breakdown into one task outcome."""
     contains_dry_run = any(result.status == "dry_run" for result in run.results)
     status: Literal["succeeded", "failed", "stopped", "invalid"] = (
         "invalid" if contains_dry_run else run.status

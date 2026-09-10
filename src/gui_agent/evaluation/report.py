@@ -1,3 +1,5 @@
+"""Build, validate, load, and atomically write Week 7 evaluation reports."""
+
 from pathlib import Path
 from typing import Literal
 
@@ -10,6 +12,8 @@ from gui_agent.simulation.harness import ObservationMode
 
 
 class EvaluationContext(StrictFrozenModel):
+    """Capture all hashes, settings, and environment needed for resume safety."""
+
     suite_sha256: str
     conditions_sha256: str
     git_revision: str = Field(min_length=1, max_length=80)
@@ -53,6 +57,8 @@ class EvaluationContext(StrictFrozenModel):
 
 
 class EvaluationReport(StrictFrozenModel):
+    """Store reproducible provenance, metrics, and ordered task outcomes."""
+
     kind: Literal["gui-agent-week7-evaluation"] = "gui-agent-week7-evaluation"
     schema_version: Literal[1] = 1
     suite_sha256: str
@@ -71,6 +77,7 @@ class EvaluationReport(StrictFrozenModel):
     outcomes: tuple[TaskOutcome, ...]
 
     def matches_context(self, context: EvaluationContext) -> bool:
+        """Return whether every provenance field matches a requested context."""
         return all(
             getattr(self, field_name) == value
             for field_name, value in context.model_dump(mode="python").items()
@@ -81,6 +88,7 @@ def build_evaluation_report(
     context: EvaluationContext,
     outcomes: tuple[TaskOutcome, ...],
 ) -> EvaluationReport:
+    """Sort outcomes and calculate a report for one immutable context."""
     ordered = tuple(
         sorted(
             outcomes,
@@ -99,6 +107,7 @@ def build_evaluation_report(
 
 
 def load_evaluation_report(path: Path) -> EvaluationReport:
+    """Load and strictly validate a Week 7 evaluation report."""
     try:
         raw = path.read_text(encoding="utf-8")
     except OSError as error:
@@ -115,6 +124,7 @@ def write_evaluation_report(
     *,
     overwrite: bool = False,
 ) -> None:
+    """Atomically write only a caller-owned Week 7 report file."""
     atomic_write_owned_json(
         report.model_dump(mode="json"),
         path,

@@ -1,3 +1,5 @@
+"""Adapt public Mind2Web rows without inventing missing GUI actions."""
+
 import json
 import warnings
 from collections.abc import Iterable, Iterator, Mapping, Sequence
@@ -64,6 +66,7 @@ def iter_mind2web(
     source_revision: str = "main",
     report: AdapterReport | None = None,
 ) -> Iterator[NormalizedGUIRecord]:
+    """Yield normalized trajectory steps while reporting unsupported actions."""
     for row_index, row in enumerate(rows):
         context = f"Mind2Web row[{row_index}]"
         episode_id = _text(row.get("annotation_id"), field="annotation_id", context=context)

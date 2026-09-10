@@ -681,7 +681,7 @@ git commit -m "docs: explain agent planning and safety contracts"
 **Interfaces:**
 - Preserves every dataset, training, simulation, evaluation, provenance, and CLI behavior
 
-- [ ] **Step 1: Capture remaining production documentation failures**
+- [x] **Step 1: Capture remaining production documentation failures**
 
 ```powershell
 uv run --no-sync ruff check src/gui_agent/datasets src/gui_agent/training `
@@ -693,11 +693,11 @@ uv run --no-sync ruff check src/gui_agent/datasets src/gui_agent/training `
 
 Expected: non-zero before the remaining docstrings are added.
 
-- [ ] **Step 2: Document remaining production contracts**
+- [x] **Step 2: Document remaining production contracts**
 
 Document source-license provenance, deterministic split/no-leakage behavior, LoRA optional dependency boundaries, evaluation schema provenance, synthetic-versus-real input boundaries, deterministic rendering, timing wrappers, report ownership, and CLI orchestration. `SimulationPolicy` and simulated executors must state that they never authorize or emit real desktop input.
 
-- [ ] **Step 3: Run remaining package tests and documentation checks**
+- [x] **Step 3: Run remaining package tests and documentation checks**
 
 ```powershell
 uv run --no-sync ruff check src/gui_agent/datasets src/gui_agent/training `
@@ -719,7 +719,7 @@ uv run --no-sync pytest tests/test_dataset_adapters.py tests/test_dataset_schema
 
 Expected: zero documentation diagnostics and all selected tests pass.
 
-- [ ] **Step 4: Commit remaining documentation**
+- [x] **Step 4: Commit remaining documentation**
 
 ```powershell
 git add src/gui_agent/datasets src/gui_agent/training src/gui_agent/simulation `

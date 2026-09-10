@@ -1,3 +1,5 @@
+"""Load quantized Qwen models and attach LoRA outside the vision tower."""
+
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, cast
@@ -11,11 +13,14 @@ _VISION_PATH_PARTS = ("visual", "vision", "merger")
 
 @dataclass(frozen=True, slots=True)
 class ParameterSummary:
+    """Store trainable and total parameter counts."""
+
     trainable: int
     total: int
 
     @property
     def ratio(self) -> float:
+        """Return the fraction of parameters that remain trainable."""
         return self.trainable / self.total if self.total else 0.0
 
 
@@ -47,6 +52,7 @@ def load_qlora_model(
     model_loader: Loader = _default_model_loader,
     quantization_factory: Loader = _default_quantization_factory,
 ) -> tuple[object, object]:
+    """Load a Qwen processor and model with approved 4-bit settings."""
     dtype = _torch_dtype(config.bnb_compute_dtype)
     quantization = quantization_factory(
         load_in_4bit=config.load_in_4bit,
@@ -108,6 +114,7 @@ def attach_lora(
     lora_config_factory: Loader | None = None,
     peft_model_factory: Callable[[object, object], object] | None = None,
 ) -> object:
+    """Attach LoRA to matched language modules and keep vision frozen."""
     prepare = prepare_model
     config_factory = lora_config_factory
     model_factory = peft_model_factory
@@ -142,6 +149,7 @@ def attach_lora(
 
 
 def trainable_parameter_summary(model: object) -> ParameterSummary:
+    """Count trainable and total parameters in one model."""
     parameters = [parameter for _name, parameter in cast(Any, model).named_parameters()]
     return ParameterSummary(
         trainable=sum(parameter.numel() for parameter in parameters if parameter.requires_grad),

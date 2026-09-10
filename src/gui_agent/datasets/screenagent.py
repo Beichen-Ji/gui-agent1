@@ -1,3 +1,5 @@
+"""Adapt local ScreenAgent exports into strict trajectory records."""
+
 import json
 import warnings
 from collections.abc import Iterator, Mapping, Sequence
@@ -139,6 +141,7 @@ def iter_screenagent(
     source_revision: str = "unknown",
     report: AdapterReport | None = None,
 ) -> Iterator[NormalizedGUIRecord]:
+    """Yield supported ScreenAgent actions in deterministic session order."""
     split_dir = root / split
     if not split_dir.is_dir():
         raise DatasetAdapterError(f"{split_dir}: ScreenAgent split directory does not exist")

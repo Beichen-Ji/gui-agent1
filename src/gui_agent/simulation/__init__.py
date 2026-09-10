@@ -1,3 +1,5 @@
+"""Headless deterministic desktop simulation with no real input emission."""
+
 from gui_agent.simulation.apps import (
     APP_IDS,
     APPLICATIONS,

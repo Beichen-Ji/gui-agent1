@@ -1,3 +1,5 @@
+"""Strict persisted schemas for training examples, splits, and manifests."""
+
 from typing import Literal
 
 from pydantic import Field, field_validator
@@ -10,6 +12,8 @@ Sha256 = str
 
 
 class TrainingExample(StrictFrozenModel):
+    """Pair one grounded GUI instruction and image with a target action."""
+
     schema_version: Literal[1] = 1
     sample_id: str = Field(min_length=1, max_length=500)
     source: DatasetSource
@@ -22,6 +26,8 @@ class TrainingExample(StrictFrozenModel):
 
 
 class SourceSplitCounts(StrictFrozenModel):
+    """Count accepted, skipped, training, and validation records by source."""
+
     seen: int = Field(ge=0)
     accepted: int = Field(ge=0)
     skipped: int = Field(ge=0)
@@ -30,6 +36,8 @@ class SourceSplitCounts(StrictFrozenModel):
 
 
 class TrainingSplit(StrictFrozenModel):
+    """Store deterministic split contents and complete input provenance."""
+
     train: tuple[TrainingExample, ...]
     validation: tuple[TrainingExample, ...]
     seed: int = Field(ge=0)
@@ -44,6 +52,8 @@ class TrainingSplit(StrictFrozenModel):
 
 
 class TrainingManifest(StrictFrozenModel):
+    """Record split counts, source licenses, revisions, and content hashes."""
+
     schema_version: Literal[1] = 1
     kind: Literal["gui-agent-week5-training"] = "gui-agent-week5-training"
     seed: int = Field(ge=0)

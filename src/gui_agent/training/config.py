@@ -1,3 +1,5 @@
+"""Load immutable QLoRA settings and constrain output ownership."""
+
 import tomllib
 from pathlib import Path
 from typing import Literal
@@ -53,11 +55,13 @@ class LoRATrainingConfig(BaseModel):
 
 
 def load_training_config(path: Path) -> LoRATrainingConfig:
+    """Load and strictly validate a TOML training configuration."""
     raw = tomllib.loads(path.read_text(encoding="utf-8"))
     return LoRATrainingConfig.model_validate(raw)
 
 
 def validate_training_output_path(path: Path, *, project_root: Path) -> Path:
+    """Resolve an output only inside project-owned artifacts or checkpoints."""
     resolved = path.resolve()
     root = project_root.resolve()
     allowed_roots = (root / "artifacts", root / "checkpoints")

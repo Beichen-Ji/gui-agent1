@@ -1,3 +1,5 @@
+"""Validate adapter layouts, hashes, JSON ownership, and atomic writes."""
+
 import hashlib
 import json
 import tempfile
@@ -9,11 +11,14 @@ from typing import cast
 
 @dataclass(frozen=True, slots=True)
 class AdapterLayout:
+    """Identify a training output root and its adapter subdirectory."""
+
     output_root: Path
     adapter_dir: Path
 
 
 def file_sha256(path: Path, *, label: str) -> str:
+    """Hash a readable file or raise a caller-labeled validation error."""
     try:
         return hashlib.sha256(path.read_bytes()).hexdigest()
     except OSError as error:
@@ -21,6 +26,7 @@ def file_sha256(path: Path, *, label: str) -> str:
 
 
 def read_json_object(path: Path, *, label: str) -> dict[str, object]:
+    """Read a JSON object or raise a caller-labeled validation error."""
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
@@ -31,6 +37,7 @@ def read_json_object(path: Path, *, label: str) -> dict[str, object]:
 
 
 def resolve_adapter_layout(adapter_path: Path) -> AdapterLayout:
+    """Resolve either a training output root or its adapter directory."""
     resolved = adapter_path.resolve()
     if not resolved.is_dir():
         raise ValueError(f"adapter path is not a directory: {adapter_path}")
@@ -42,6 +49,7 @@ def resolve_adapter_layout(adapter_path: Path) -> AdapterLayout:
 
 
 def adapter_provenance(adapter_path: Path) -> tuple[str, str, str]:
+    """Return an adapter label plus manifest and weight SHA-256 hashes."""
     layout = resolve_adapter_layout(adapter_path)
     try:
         label = layout.output_root.relative_to(Path.cwd().resolve()).as_posix()
@@ -68,6 +76,7 @@ def atomic_write_owned_json(
     overwrite: bool = False,
     output_label: str = "evaluation output",
 ) -> None:
+    """Write owned JSON atomically and refuse unrelated overwrite targets."""
     if path.suffix.lower() != ".json":
         raise ValueError(f"{output_label} must be a JSON file")
     if payload.get("kind") != owned_kind:

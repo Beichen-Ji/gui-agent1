@@ -1,3 +1,5 @@
+"""Expose deterministic observations and actions over in-process state only."""
+
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -34,26 +36,32 @@ ObservationMode: TypeAlias = Literal["oracle", "ocr"]
 
 @dataclass(slots=True)
 class SimulatedDesktop:
+    """Own local testbed state, deterministic rendering, and simulated time."""
+
     state: TestbedState
     canvas: tuple[int, int] = (1280, 720)
     elapsed_seconds: float = 0.0
     hitboxes: dict[str, BoundingBox] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
+        """Reject canvases too small for the deterministic layout."""
         width, height = self.canvas
         if width < 320 or height < 180:
             raise ValueError("simulation canvas must be at least 320x180")
 
     @property
     def bounds(self) -> ScreenRegion:
+        """Return zero-origin bounds for the simulated canvas."""
         return ScreenRegion(left=0, top=0, width=self.canvas[0], height=self.canvas[1])
 
     def render(self) -> ImageArray:
+        """Render state and refresh the hitboxes used by simulated actions."""
         image, hitboxes = render_desktop(self.state, self.canvas)
         self.hitboxes = hitboxes
         return image
 
     def advance(self, seconds: float) -> None:
+        """Advance only the in-process clock and delayed state transitions."""
         self.elapsed_seconds += seconds
         self.state.wait(seconds)
 
@@ -69,6 +77,7 @@ class SimulatedObservationSource:
         ocr: OCRBackend | None = None,
         min_confidence: float = 0.5,
     ) -> None:
+        """Configure oracle or OCR perception over a simulated desktop."""
         if mode not in {"oracle", "ocr"}:
             raise ValueError(f"unknown simulated observation mode: {mode}")
         if not isfinite(min_confidence) or not 0.0 <= min_confidence <= 1.0:
@@ -82,9 +91,11 @@ class SimulatedObservationSource:
 
     @property
     def desktop(self) -> SimulatedDesktop:
+        """Return the in-process simulated desktop."""
         return self._desktop
 
     def observe(self, step_index: int) -> Observation:
+        """Render one indexed observation without capturing the real desktop."""
         image = self._desktop.render()
         screenshot = ScreenshotResult(
             image=image,
@@ -115,7 +126,7 @@ class SimulatedObservationSource:
 
 
 class SimulatedActionExecutor:
-    """Apply model actions only to an in-process simulated desktop."""
+    """Apply actions in process and never emit real desktop input."""
 
     def __init__(
         self,
@@ -123,14 +134,17 @@ class SimulatedActionExecutor:
         *,
         clock: Callable[[float], None] = lambda _seconds: None,
     ) -> None:
+        """Bind simulated state and an optional simulated wait callback."""
         self._desktop = desktop
         self._clock = clock
 
     @property
     def desktop(self) -> SimulatedDesktop:
+        """Return the in-process simulated desktop."""
         return self._desktop
 
     def execute(self, action: AgentAction, *, step_index: int) -> StepResult:
+        """Apply one action to simulated state and return a structured result."""
         try:
             message = self._dispatch(action)
         except (OSError, UnicodeError, ValueError) as error:
@@ -204,9 +218,10 @@ class SimulatedActionExecutor:
 
 
 class SimulationPolicy:
-    """Never authorizes real desktop input. Validate simulated actions only."""
+    """Validate simulated actions without ever authorizing real desktop input."""
 
     def __init__(self) -> None:
+        """Create a preview-only validator with live execution disabled."""
         self._validator = SafetyPolicy(execute=False)
 
     def authorize(
@@ -216,6 +231,7 @@ class SimulationPolicy:
         *,
         expected_outcome: str,
     ) -> None:
+        """Validate an action while keeping the real-input gate disabled."""
         self._validator.authorize(
             action,
             observation,

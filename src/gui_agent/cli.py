@@ -1,3 +1,5 @@
+"""Orchestrate safe dataset, model, training, evaluation, and agent commands."""
+
 import argparse
 import json
 import os
@@ -53,6 +55,8 @@ _ACTION_ADAPTER: TypeAdapter[AgentAction] = TypeAdapter(AgentAction)
 
 @dataclass(frozen=True, slots=True)
 class TaskDefinition:
+    """Store one predefined goal, success criterion, and fake action sequence."""
+
     id: str
     instruction: str
     success_criteria: str
@@ -61,6 +65,8 @@ class TaskDefinition:
 
 @dataclass(frozen=True, slots=True)
 class RunConfig:
+    """Store validated runtime selections without exposing API keys in repr."""
+
     goal: str
     success_criteria: str | None
     task_id: str | None
@@ -84,13 +90,17 @@ class RunConfig:
 
 
 class AgentRunner(Protocol):
+    """Run a bounded GUI task and return a structured result."""
+
     def run(
         self,
         goal: str,
         *,
         success_criteria: str | None = None,
         max_steps: int = 10,
-    ) -> AgentRunResult: ...
+    ) -> AgentRunResult:
+        """Run one goal with optional deterministic success criteria."""
+        ...
 
 
 RuntimeFactory: TypeAlias = Callable[[RunConfig, InputFunction], AgentRunner]
@@ -127,6 +137,7 @@ def _fixed_bounds(region: ScreenRegion) -> Callable[[], ScreenRegion]:
 
 
 def load_task_definitions(path: Path) -> dict[str, TaskDefinition]:
+    """Load strict, uniquely identified version-one task definitions."""
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
@@ -175,6 +186,7 @@ def load_task_definitions(path: Path) -> dict[str, TaskDefinition]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the top-level CLI and its safe desktop run options."""
     parser = argparse.ArgumentParser(
         prog="gui-agent",
         description="Safe Week 4 desktop GUI agent prototype",
@@ -323,6 +335,7 @@ def _fake_planner(goal: str, configured: tuple[AgentAction, ...]) -> FakePlanner
 
 
 def build_runtime(config: RunConfig, input_fn: InputFunction) -> GUIAgent:
+    """Construct a fake, local, or explicitly permitted remote agent runtime."""
     planner: MultimodalPlanner
     observer: ObservationSource
     if config.provider == "fake":
@@ -442,6 +455,7 @@ def main(
     input_fn: InputFunction = input,
     runtime_factory: RuntimeFactory | None = None,
 ) -> int:
+    """Dispatch a subcommand or execute one validated GUI-agent run."""
     parser = build_parser()
     args, remainder = parser.parse_known_args(argv)
     if args.command == "dataset":

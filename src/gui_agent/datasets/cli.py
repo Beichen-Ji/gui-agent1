@@ -1,3 +1,5 @@
+"""Command-line entry point for deterministic dataset normalization."""
+
 import argparse
 import json
 import subprocess
@@ -43,6 +45,7 @@ def _bounded_records(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build dataset-specific normalization commands and shared output options."""
     parser = argparse.ArgumentParser(description="Normalize public GUI agent datasets")
     subparsers = parser.add_subparsers(dest="source", required=True)
 
@@ -66,6 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Normalize one selected dataset and print its deterministic report."""
     args = build_parser().parse_args(argv)
     report = AdapterReport()
     if args.source == "screenagent":

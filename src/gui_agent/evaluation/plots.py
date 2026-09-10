@@ -1,3 +1,5 @@
+"""Render publication-ready figures from synthetic evaluation reports."""
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -80,6 +82,7 @@ def _finish(figure: Figure, title: str) -> Figure:
 
 
 def plot_success_by_difficulty(reports: tuple[EvaluationReport, ...]) -> Figure:
+    """Plot baseline OCR success rates by difficulty and resolution."""
     _require_reports(reports)
     selected = _main_ocr_reports(reports)
     figure, axis = plt.subplots(figsize=(9, 5.5))
@@ -108,6 +111,7 @@ def plot_success_by_difficulty(reports: tuple[EvaluationReport, ...]) -> Figure:
 
 
 def plot_success_by_app(reports: tuple[EvaluationReport, ...]) -> Figure:
+    """Plot baseline OCR success rates by application and resolution."""
     _require_reports(reports)
     selected = _main_ocr_reports(reports)
     figure, axis = plt.subplots(figsize=(10, 5.5))
@@ -138,6 +142,7 @@ def plot_success_by_app(reports: tuple[EvaluationReport, ...]) -> Figure:
 def plot_success_and_latency_by_resolution(
     reports: tuple[EvaluationReport, ...],
 ) -> Figure:
+    """Plot success rate and median wall time across baseline resolutions."""
     _require_reports(reports)
     selected = _main_ocr_reports(reports)
     labels = [f"{_resolution(report)[0]}x{_resolution(report)[1]}" for report in selected]
@@ -178,6 +183,7 @@ def plot_success_and_latency_by_resolution(
 
 
 def plot_error_distribution(reports: tuple[EvaluationReport, ...]) -> Figure:
+    """Plot stacked failure-reason shares for valid tasks by condition."""
     _require_reports(reports)
     labels = [_condition_label(report) for report in reports]
     reasons = sorted(
@@ -226,6 +232,7 @@ def plot_error_distribution(reports: tuple[EvaluationReport, ...]) -> Figure:
 
 
 def plot_steps_by_difficulty(reports: tuple[EvaluationReport, ...]) -> Figure:
+    """Plot step-count distributions for successful baseline OCR tasks."""
     _require_reports(reports)
     selected = _main_ocr_reports(reports)
     groups: dict[str, list[int]] = defaultdict(list)
@@ -251,6 +258,7 @@ def plot_steps_by_difficulty(reports: tuple[EvaluationReport, ...]) -> Figure:
 
 
 def plot_timing_breakdown(reports: tuple[EvaluationReport, ...]) -> Figure:
+    """Plot mean perception, planning, and execution time by condition."""
     _require_reports(reports)
     labels = [_condition_label(report) for report in reports]
     figure, axis = plt.subplots(figsize=(11, 6))
@@ -290,6 +298,7 @@ def plot_timing_breakdown(reports: tuple[EvaluationReport, ...]) -> Figure:
 
 
 def load_report_series(input_dir: Path) -> tuple[EvaluationReport, ...]:
+    """Load all evaluation reports beneath a directory in stable order."""
     paths = tuple(sorted(input_dir.rglob("evaluation.json"))) if input_dir.is_dir() else ()
     if not paths:
         raise ValueError(f"no evaluation reports found under: {input_dir}")
@@ -310,6 +319,7 @@ def save_week7_figures(
     reports: tuple[EvaluationReport, ...],
     output_dir: Path,
 ) -> tuple[Path, ...]:
+    """Save every Week 7 figure as PNG and SVG and return written paths."""
     _require_reports(reports)
     output_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []

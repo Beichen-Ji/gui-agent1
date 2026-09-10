@@ -1,3 +1,5 @@
+"""Validate the fixed task suite and execute deterministic references."""
+
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -32,6 +34,8 @@ _QUOTED_TEXT = re.compile(r"'([^']+)'")
 
 
 class EvaluationTask(StrictFrozenModel):
+    """Define a simulated task with a bounded reference solution."""
+
     id: str = Field(min_length=1, max_length=80)
     app: AppId
     difficulty: Difficulty
@@ -78,6 +82,8 @@ class EvaluationTask(StrictFrozenModel):
 
 
 class EvaluationTaskSuite(StrictFrozenModel):
+    """Store the fixed version-one suite of exactly twenty unique tasks."""
+
     schema_version: Literal[1] = 1
     kind: Literal["gui-agent-week7-task-suite"] = "gui-agent-week7-task-suite"
     tasks: tuple[EvaluationTask, ...]
@@ -95,6 +101,8 @@ class EvaluationTaskSuite(StrictFrozenModel):
 
 @dataclass(frozen=True, slots=True)
 class ReferenceSolutionResult:
+    """Summarize deterministic reference execution for one task."""
+
     task_id: str
     succeeded: bool
     action_count: int
@@ -102,6 +110,7 @@ class ReferenceSolutionResult:
 
 
 def load_task_suite(path: Path) -> tuple[EvaluationTask, ...]:
+    """Load and strictly validate the fixed Week 7 task suite."""
     try:
         raw = path.read_text(encoding="utf-8")
     except OSError as error:
@@ -119,6 +128,7 @@ def run_reference_solution(
     root: Path,
     canvas: tuple[int, int] = (1280, 720),
 ) -> ReferenceSolutionResult:
+    """Run one reference solution entirely inside the simulated desktop."""
     state = TestbedState(root, fault_profile=task.fault_profile)
     state.activate_app(task.initial_state.get("active_app", task.app))  # type: ignore[arg-type]
     desktop = SimulatedDesktop(state, canvas=canvas)
@@ -195,6 +205,7 @@ def build_reference_planner(
     *,
     canvas: tuple[int, int] = (1280, 720),
 ) -> FakePlanner:
+    """Build a deterministic planner whose actions scale to the canvas."""
     actions = tuple(
         _scaled_reference_action(action, canvas) for action in task.reference_actions
     )

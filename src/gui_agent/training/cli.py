@@ -1,3 +1,5 @@
+"""Build deterministic training data, run QLoRA, and evaluate conditions."""
+
 import argparse
 import hashlib
 import json
@@ -34,6 +36,7 @@ def _non_negative_integer(value: str) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the Week 5 data, training, and evaluation subcommands."""
     parser = argparse.ArgumentParser(description="Build and run Week 5 GUI training data")
     commands = parser.add_subparsers(dest="training_command", required=True)
     build = commands.add_parser("build", help="Build deterministic train/validation JSONL")
@@ -105,6 +108,7 @@ def _load_records(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Dispatch one validated training workflow and print its manifest."""
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.training_command == "evaluate":

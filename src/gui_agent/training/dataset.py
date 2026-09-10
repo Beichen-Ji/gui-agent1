@@ -1,3 +1,5 @@
+"""Build deterministic episode-level train and validation splits."""
+
 import hashlib
 import json
 from collections import Counter, defaultdict
@@ -88,6 +90,7 @@ def build_training_split(
     seed: int,
     input_sha256: Mapping[DatasetSource, str] | None = None,
 ) -> TrainingSplit:
+    """Validate records and split whole episodes without cross-split leakage."""
     if isinstance(seed, bool) or seed < 0:
         raise ValueError("seed must be a non-negative integer")
     if not 0.0 < validation_ratio < 1.0:
@@ -249,6 +252,7 @@ def write_training_split(
     *,
     overwrite: bool = False,
 ) -> TrainingManifest:
+    """Write a deterministic split and its source-license provenance manifest."""
     if output_dir.exists():
         if not overwrite:
             raise ValueError("output directory already exists; pass --overwrite to rebuild")

@@ -1,3 +1,5 @@
+"""Collate multimodal Qwen examples while masking non-assistant tokens."""
+
 from collections.abc import Sequence
 from typing import Any, cast
 
@@ -17,11 +19,15 @@ def _subsequence_start(row: list[int], target: list[int]) -> int:
 
 
 class QwenSFTCollator:
+    """Format images and messages into supervised fine-tuning tensors."""
+
     def __init__(self, processor: object, *, profile: PromptProfile) -> None:
+        """Bind a processor and the prompt profile used by the dataset."""
         self._processor = cast(Any, processor)
         self._profile = profile
 
     def __call__(self, examples: Sequence[TrainingExample]) -> dict[str, Any]:
+        """Build a batch whose labels expose only assistant target tokens."""
         if not examples:
             raise ValueError("at least one training example is required")
         messages = [format_training_messages(example, self._profile) for example in examples]

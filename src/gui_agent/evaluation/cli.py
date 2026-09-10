@@ -1,3 +1,5 @@
+"""Expand and run reproducible Week 7 simulated evaluation conditions."""
+
 import argparse
 import hashlib
 import importlib.metadata
@@ -30,6 +32,8 @@ Provider: TypeAlias = Literal["fake", "qwen"]
 
 
 class EvaluationConditionTemplate(StrictFrozenModel):
+    """Define one condition before expanding its requested resolutions."""
+
     name: str = Field(min_length=1, max_length=120)
     model: str = Field(min_length=1, max_length=500)
     prompt_profile: str
@@ -67,6 +71,7 @@ class EvaluationConditionTemplate(StrictFrozenModel):
         return value
 
     def effective_key(self) -> tuple[object, ...]:
+        """Return fields that determine behavior, excluding the display name."""
         return (
             self.model,
             self.prompt_profile,
@@ -79,6 +84,8 @@ class EvaluationConditionTemplate(StrictFrozenModel):
 
 
 class EvaluationConditionSet(StrictFrozenModel):
+    """Store uniquely named and behaviorally distinct condition templates."""
+
     schema_version: Literal[1] = 1
     kind: Literal["gui-agent-week7-condition-set"] = "gui-agent-week7-condition-set"
     conditions: tuple[EvaluationConditionTemplate, ...] = Field(min_length=1)
@@ -95,6 +102,8 @@ class EvaluationConditionSet(StrictFrozenModel):
 
 
 class ExpandedCondition(StrictFrozenModel):
+    """Bind a deterministic condition identifier to one resolution."""
+
     id: str = Field(min_length=1, max_length=120)
     name: str
     model: str
@@ -108,6 +117,8 @@ class ExpandedCondition(StrictFrozenModel):
 
 
 class EvaluationRunSpec(StrictFrozenModel):
+    """Pair one expanded condition with one task and time estimate."""
+
     id: str = Field(min_length=1, max_length=240)
     condition: ExpandedCondition
     task: EvaluationTask
@@ -140,6 +151,7 @@ def _condition_id(
 def expand_conditions(
     condition_set: EvaluationConditionSet,
 ) -> tuple[ExpandedCondition, ...]:
+    """Expand every template-resolution pair with a stable identifier."""
     expanded = tuple(
         ExpandedCondition(
             id=_condition_id(condition, resolution),
@@ -166,6 +178,7 @@ def expand_run_matrix(
     tasks: Sequence[EvaluationTask],
     condition_set: EvaluationConditionSet,
 ) -> tuple[EvaluationRunSpec, ...]:
+    """Build the deterministic Cartesian product of tasks and conditions."""
     runs = tuple(
         EvaluationRunSpec(
             id=f"{condition.id}:{task.id}",
@@ -183,6 +196,7 @@ def expand_run_matrix(
 
 
 def load_condition_set(path: Path) -> EvaluationConditionSet:
+    """Load and strictly validate a versioned evaluation condition file."""
     try:
         raw = path.read_text(encoding="utf-8")
     except OSError as error:
@@ -308,6 +322,7 @@ def _execute_condition(
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build the simulated evaluation orchestration CLI."""
     parser = argparse.ArgumentParser(description="Run the Week 7 simulated desktop evaluation")
     parser.add_argument("--suite", type=Path, required=True)
     parser.add_argument("--conditions", type=Path, required=True)
@@ -319,6 +334,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Plan or execute the condition matrix with resumable owned outputs."""
     parser = build_parser()
     args = parser.parse_args(argv)
     suite_path = cast(Path, args.suite)

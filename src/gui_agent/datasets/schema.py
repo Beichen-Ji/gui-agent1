@@ -1,3 +1,5 @@
+"""Strict persisted schemas for normalized public GUI datasets."""
+
 from typing import Literal, Self
 
 from pydantic import Field, model_validator
@@ -10,6 +12,8 @@ RecordType = Literal["trajectory_step", "task"]
 
 
 class NormalizedGUIRecord(StrictFrozenModel):
+    """Represent a validated trajectory step or task-level benchmark record."""
+
     schema_version: Literal[1] = 1
     source: DatasetSource
     record_type: RecordType
@@ -25,6 +29,7 @@ class NormalizedGUIRecord(StrictFrozenModel):
 
     @model_validator(mode="after")
     def validate_record_shape(self) -> Self:
+        """Require fields appropriate to the selected record type."""
         if self.record_type == "trajectory_step":
             if self.action is None:
                 raise ValueError("trajectory_step requires an action")
@@ -36,6 +41,8 @@ class NormalizedGUIRecord(StrictFrozenModel):
 
 
 class DatasetManifest(StrictFrozenModel):
+    """Record source license, revision, output count, and content hash."""
+
     schema_version: Literal[1] = 1
     source: DatasetSource
     source_url: str = Field(min_length=1, max_length=1000)
