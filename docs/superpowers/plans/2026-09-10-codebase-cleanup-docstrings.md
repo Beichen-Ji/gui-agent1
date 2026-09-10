@@ -455,7 +455,7 @@ git commit -m "refactor: share text and frame normalization helpers"
 - Produces: immutable `DATASET_SOURCES: Mapping[DatasetSource, DatasetSourceMetadata]`
 - Preserves: every manifest URL and license string exactly
 
-- [ ] **Step 1: Write a failing canonical-metadata test**
+- [x] **Step 1: Write a failing canonical-metadata test**
 
 ```python
 def test_dataset_source_metadata_preserves_urls_and_licenses() -> None:
@@ -471,7 +471,7 @@ def test_dataset_source_metadata_preserves_urls_and_licenses() -> None:
     )
 ```
 
-- [ ] **Step 2: Verify the test fails on the missing module**
+- [x] **Step 2: Verify the test fails on the missing module**
 
 ```powershell
 uv run --no-sync pytest tests/test_dataset_sources.py -q
@@ -479,11 +479,11 @@ uv run --no-sync pytest tests/test_dataset_sources.py -q
 
 Expected: collection fails with `ModuleNotFoundError: gui_agent.datasets.sources`.
 
-- [ ] **Step 3: Implement immutable metadata and migrate consumers**
+- [x] **Step 3: Implement immutable metadata and migrate consumers**
 
 Define a frozen, slotted dataclass and expose the mapping through `MappingProxyType`. Replace `_SOURCE_METADATA` and `_SOURCE_LICENSES` lookups without changing string literals or manifest field construction.
 
-- [ ] **Step 4: Run dataset and training regressions**
+- [x] **Step 4: Run dataset and training regressions**
 
 ```powershell
 uv run --no-sync pytest tests/test_dataset_sources.py `
@@ -495,7 +495,7 @@ uv run --no-sync mypy src tests/test_dataset_sources.py
 
 Expected: all selected tests and static checks pass; existing manifest assertions remain unchanged.
 
-- [ ] **Step 5: Commit source metadata consolidation**
+- [x] **Step 5: Commit source metadata consolidation**
 
 ```powershell
 git add src/gui_agent/datasets/sources.py src/gui_agent/datasets/pipeline.py `

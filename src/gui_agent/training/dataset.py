@@ -8,6 +8,7 @@ from PIL import Image, UnidentifiedImageError
 
 from gui_agent.agent.types import ClickAction, DragAction, ScrollAction
 from gui_agent.datasets.schema import DatasetSource, NormalizedGUIRecord
+from gui_agent.datasets.sources import DATASET_SOURCES
 from gui_agent.training.schema import (
     SourceSplitCounts,
     TrainingExample,
@@ -15,11 +16,6 @@ from gui_agent.training.schema import (
     TrainingSplit,
 )
 
-_SOURCE_LICENSES: dict[DatasetSource, str] = {
-    "screenagent": "Apache-2.0 (dataset); MIT (code)",
-    "mind2web": "Creative Commons Attribution 4.0 International",
-    "webarena": "Apache-2.0",
-}
 _OUTPUT_FILES = frozenset({"train.jsonl", "validation.jsonl", "manifest.json"})
 
 
@@ -209,7 +205,9 @@ def build_training_split(
             source: tuple(sorted(revisions))
             for source, revisions in sorted(source_revisions.items())
         },
-        source_licenses={source: _SOURCE_LICENSES[source] for source in all_sources},
+        source_licenses={
+            source: DATASET_SOURCES[source].license for source in all_sources
+        },
     )
 
 
