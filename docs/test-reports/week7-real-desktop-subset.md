@@ -1,6 +1,6 @@
 # Week 7 真实桌面小样本子集
 
-状态：待操作者在场执行（2026-09-10 已完成任务选择、环境准备和首轮 dry-run 诊断）
+状态：执行中（2026-09-10 已完成 easy 与 medium，hard 待执行）
 
 ## 目的与边界
 
@@ -90,9 +90,11 @@ CLI 已增加脱敏 `action_previews`，需要用上面的 `*-dry-v2` 目录重�
 
 | 难度 / 任务 | 成功 | 步数 | 墙钟耗时 | 人工确认次数 | OCR 错认 | 坐标偏差 | 与模拟结果的差异 |
 |---|---|---:|---:|---:|---|---|---|
-| easy / `open-browser` | 待执行 | — | — | — | — | — | — |
-| medium / `search-content` | 待执行 | — | — | — | — | — | — |
+| easy / `open-browser` | GUI 目标达到；端到端失败 | 1 个已执行动作（2 次决策） | 39.6 s | 1 | 未报告；目标定位正确 | 无明显偏差，`(51,122)` 命中 Browser 标签 | 模拟为 stopped；真实界面成功变化，但 `finish` 使用非法步骤 ID `step_index=1`，最终为 `planner_output_invalid` |
+| medium / `search-content` | 失败，`stopped / repeated_action`；未触发 Search | 2 个已执行动作（3 次决策） | 61.3 s | 2 | 未报告错认；3 次观察均为 11 个 OCR 项 | `(576,216)` 命中搜索输入框；输入动作前的终端确认改变了焦点 | 与模拟同为 `repeated_action`，但真实桌面只执行 click + `type_text` 后便重复输入；观察摘要显示输入后 testbed 回到点击前状态，符合文本被送往确认终端而非 testbed 的焦点丢失特征 |
 | hard / `delayed-search` | 待执行 | — | — | — | — | — | — |
+
+medium 的墙钟耗时与确认次数取自最新有效 run `5a6090c760a0491485e7bb6cd954031b`。同一目录内另有一次确认拒绝记录，该次没有执行桌面动作，不计入正式样本。
 
 ## sim-to-real 结论
 
