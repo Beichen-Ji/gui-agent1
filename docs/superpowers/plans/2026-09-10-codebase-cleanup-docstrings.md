@@ -515,7 +515,7 @@ git commit -m "refactor: centralize dataset source metadata"
 - Consumes: all private top-level definitions in `src/gui_agent`
 - Preserves: callbacks, protocol methods, serializer hooks, dependency-injection seams, and Qwen-specific adapter validation
 
-- [ ] **Step 1: Run the private-definition reference audit**
+- [x] **Step 1: Run the private-definition reference audit**
 
 Run the AST/text audit from the repository root. It lists only private top-level definitions whose name occurs no more than once across source, tests, examples, and scripts:
 
@@ -526,7 +526,7 @@ uv run --no-sync python -c "import ast,pathlib,re; root=pathlib.Path('src/gui_ag
 
 Expected on the approved baseline: no candidates. If later consolidation leaves a private wrapper with no consumer, delete that wrapper only after `rg -w <name>` confirms no dynamic/test seam.
 
-- [ ] **Step 2: Run compiler/linter dead-code checks**
+- [x] **Step 2: Run compiler/linter dead-code checks**
 
 ```powershell
 uv run --no-sync ruff check . --select F,B,SIM
@@ -535,15 +535,15 @@ uv run --no-sync python -m compileall -q src tests examples scripts
 
 Expected: no unused imports, unused local variables, undefined names, or simplification errors.
 
-- [ ] **Step 3: Audit provenance rather than moving domain validation**
+- [x] **Step 3: Audit provenance rather than moving domain validation**
 
 Confirm `resolve_adapter_layout`, `read_json_object`, `file_sha256`, and `adapter_provenance` remain centralized in `provenance.py`. Keep model/grid/prompt/hash validation in `agent/qwen.py` because it is Qwen runtime policy, not duplicate generic provenance behavior.
 
-- [ ] **Step 4: Write the cleanup evidence report**
+- [x] **Step 4: Write the cleanup evidence report**
 
 Create `docs/test-reports/week8-codebase-cleanup-report.md` with the baseline counts, the zero-candidate private audit result, the consolidated helper families, the preserved public `clear_cache` method, and the final gates to be filled in Task 11. Do not claim a function was removed unless its exact evidence is recorded.
 
-- [ ] **Step 5: Commit the audit record and any proven deletions**
+- [x] **Step 5: Commit the audit record and any proven deletions**
 
 ```powershell
 git add docs/test-reports/week8-codebase-cleanup-report.md src/gui_agent
