@@ -1,3 +1,5 @@
+"""Desktop capture, OCR, localization, and benchmark utilities."""
+
 from gui_agent.perception.capture import (
     CaptureError,
     InvalidMonitorError,

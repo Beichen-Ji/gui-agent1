@@ -1,3 +1,5 @@
+"""Build deterministic OCR fixtures and benchmark accuracy and latency."""
+
 import json
 import time
 from collections.abc import Callable, Mapping
@@ -24,6 +26,7 @@ from gui_agent.types import (
 
 
 def box_iou(first: BoundingBox, second: BoundingBox) -> float:
+    """Return intersection-over-union for two half-open bounding boxes."""
     intersection_width = max(0, min(first.right, second.right) - max(first.left, second.left))
     intersection_height = max(
         0,
@@ -38,6 +41,8 @@ def box_iou(first: BoundingBox, second: BoundingBox) -> float:
 
 @dataclass(frozen=True, slots=True)
 class DetectionScore:
+    """Store aggregate OCR detection counts and derived quality metrics."""
+
     true_positives: int
     false_positives: int
     false_negatives: int
@@ -52,6 +57,7 @@ def score_detections(
     *,
     iou_threshold: float = 0.5,
 ) -> DetectionScore:
+    """Score text-matched detections using one-to-one IoU assignment."""
     if not isfinite(iou_threshold) or not 0.0 <= iou_threshold <= 1.0:
         raise ValueError("iou_threshold must be between 0 and 1")
     unmatched = set(range(len(expected)))
@@ -93,11 +99,14 @@ def score_detections(
 
 @dataclass(frozen=True, slots=True)
 class LatencySummary:
+    """Store median and 95th-percentile latency in milliseconds."""
+
     median_ms: float
     p95_ms: float
 
 
 def latency_summary(samples_ms: tuple[float, ...]) -> LatencySummary:
+    """Summarize finite, non-negative latency samples."""
     if not samples_ms or any(
         isinstance(sample, bool)
         or not isinstance(sample, (int, float))
@@ -115,6 +124,8 @@ def latency_summary(samples_ms: tuple[float, ...]) -> LatencySummary:
 
 @dataclass(frozen=True, slots=True)
 class BenchmarkCase:
+    """Pair a synthetic BGR image with its expected absolute detections."""
+
     id: str
     image: ImageArray
     expected: tuple[OCRDetection, ...]
@@ -122,6 +133,8 @@ class BenchmarkCase:
 
 @dataclass(frozen=True, slots=True)
 class ProfileBenchmark:
+    """Store accuracy and cold-versus-cached latency for one OCR profile."""
+
     profile: str
     score: DetectionScore
     cold_latency: LatencySummary
@@ -131,6 +144,8 @@ class ProfileBenchmark:
 
 @dataclass(frozen=True, slots=True)
 class OCRBenchmarkReport:
+    """Store versioned results for a deterministic OCR benchmark run."""
+
     schema_version: int
     case_count: int
     warmup: int
@@ -138,6 +153,7 @@ class OCRBenchmarkReport:
     profiles: Mapping[str, ProfileBenchmark]
 
     def to_dict(self) -> dict[str, object]:
+        """Return a JSON-compatible report without internal dataclass objects."""
         return {
             "schema_version": self.schema_version,
             "case_count": self.case_count,
@@ -188,6 +204,7 @@ def _render_text(image: ImageArray, text: str, box: BoundingBox) -> None:
 
 
 def load_benchmark_manifest(path: Path) -> tuple[BenchmarkCase, ...]:
+    """Validate a version-one manifest and render its synthetic OCR cases."""
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
@@ -293,6 +310,7 @@ def benchmark_profiles(
     backend_factory: Callable[[str], OCRBackend],
     clock: Callable[[], float] = time.perf_counter,
 ) -> OCRBenchmarkReport:
+    """Benchmark unique OCR profiles with cold and observation-cache timings."""
     if not profiles or len(profiles) != len(set(profiles)):
         raise ValueError("profiles must contain unique profile names")
     if isinstance(warmup, bool) or not isinstance(warmup, int) or warmup < 0:

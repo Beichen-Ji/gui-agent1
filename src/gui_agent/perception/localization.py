@@ -1,3 +1,5 @@
+"""Locate OCR text and render non-mutating detection annotations."""
+
 import os
 from collections.abc import Sequence
 from enum import StrEnum
@@ -16,6 +18,8 @@ DEFAULT_ORIGIN = Point(0, 0)
 
 
 class MatchMode(StrEnum):
+    """Select exact or substring OCR text matching."""
+
     EXACT = "exact"
     CONTAINS = "contains"
 
@@ -27,6 +31,7 @@ def find_text(
     mode: MatchMode = MatchMode.EXACT,
     case_sensitive: bool = True,
 ) -> list[OCRDetection]:
+    """Return detections whose text matches a non-empty query in input order."""
     if not query:
         raise ValueError("query must not be empty")
 
@@ -64,6 +69,7 @@ def annotate_detections(
     font_path: Path | None = None,
     origin: Point = DEFAULT_ORIGIN,
 ) -> ImageArray:
+    """Draw absolute OCR boxes on a BGR image copy using a local origin."""
     if (
         not isinstance(image, np.ndarray)
         or image.dtype != np.uint8

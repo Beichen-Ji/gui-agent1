@@ -564,7 +564,7 @@ Expected: the commit may contain only the report when the audit has no safe dele
 **Interfaces:**
 - Preserves all behavior; produces only docstrings/comments in these files
 
-- [ ] **Step 1: Capture the expected Ruff documentation failures**
+- [x] **Step 1: Capture the expected Ruff documentation failures**
 
 ```powershell
 uv run --no-sync ruff check src/gui_agent/types.py src/gui_agent/perception `
@@ -573,7 +573,7 @@ uv run --no-sync ruff check src/gui_agent/types.py src/gui_agent/perception `
 
 Expected: non-zero with missing-module/class/method/function docstring diagnostics.
 
-- [ ] **Step 2: Document contracts and invariants**
+- [x] **Step 2: Document contracts and invariants**
 
 Add module and public API docstrings. Use concise contracts such as:
 
@@ -588,7 +588,7 @@ def capture_region(...):
 
 Explain image color order, absolute versus local coordinates, OCR backend boundaries, preprocessing immutability, bounding-box invariants, and the fact that `DesktopController` can produce real input only when constructed outside dry-run mode. Do not add comments to obvious field declarations.
 
-- [ ] **Step 3: Run documentation and behavior gates for these packages**
+- [x] **Step 3: Run documentation and behavior gates for these packages**
 
 ```powershell
 uv run --no-sync ruff check src/gui_agent/types.py src/gui_agent/perception `
@@ -600,7 +600,7 @@ uv run --no-sync pytest tests/test_types.py tests/test_capture.py tests/test_ocr
 
 Expected: zero documentation diagnostics and all selected tests pass.
 
-- [ ] **Step 4: Commit core/perception/control documentation**
+- [x] **Step 4: Commit core/perception/control documentation**
 
 ```powershell
 git add src/gui_agent/types.py src/gui_agent/perception src/gui_agent/control

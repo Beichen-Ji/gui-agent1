@@ -1,3 +1,5 @@
+"""Validate, record, and optionally dispatch desktop input actions."""
+
 import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -28,6 +30,8 @@ VALID_KEYS = frozenset(
 
 @dataclass(frozen=True, slots=True)
 class ActionRecord:
+    """Record a validated desktop action and its creation time."""
+
     name: str
     parameters: tuple[tuple[str, object], ...]
     created_at: datetime
@@ -35,15 +39,27 @@ class ActionRecord:
 
 @runtime_checkable
 class DesktopBackend(Protocol):
-    def move_to(self, point: Point, *, duration: float) -> None: ...
+    """Define the low-level desktop input operations used by the controller."""
 
-    def click(self, point: Point, *, button: str, clicks: int) -> None: ...
+    def move_to(self, point: Point, *, duration: float) -> None:
+        """Move the pointer to an absolute desktop point."""
+        ...
 
-    def type_text(self, text: str, *, interval: float) -> None: ...
+    def click(self, point: Point, *, button: str, clicks: int) -> None:
+        """Click a mouse button at an absolute desktop point."""
+        ...
 
-    def hotkey(self, *keys: str) -> None: ...
+    def type_text(self, text: str, *, interval: float) -> None:
+        """Type text using a delay between characters."""
+        ...
 
-    def scroll(self, clicks: int, *, point: Point | None) -> None: ...
+    def hotkey(self, *keys: str) -> None:
+        """Press a validated key sequence as one hotkey."""
+        ...
+
+    def scroll(self, clicks: int, *, point: Point | None) -> None:
+        """Scroll at the current pointer or an optional absolute point."""
+        ...
 
     def drag_to(
         self,
@@ -52,7 +68,9 @@ class DesktopBackend(Protocol):
         *,
         duration: float,
         button: str,
-    ) -> None: ...
+    ) -> None:
+        """Drag the pointer between two absolute desktop points."""
+        ...
 
 
 class _PyAutoGUIModule(Protocol):
@@ -130,12 +148,15 @@ def _default_virtual_bounds() -> ScreenRegion:
 
 
 class PyAutoGUIAdapter:
+    """Translate validated controller operations to PyAutoGUI calls."""
+
     def __init__(
         self,
         pause: float = 0.1,
         *,
         module: _PyAutoGUIModule | None = None,
     ) -> None:
+        """Configure a fail-safe PyAutoGUI module with the requested pause."""
         pause = _duration(pause, "pause")
         if module is None:
             import pyautogui
@@ -146,18 +167,23 @@ class PyAutoGUIAdapter:
         self._module = module
 
     def move_to(self, point: Point, *, duration: float) -> None:
+        """Move the pointer through PyAutoGUI."""
         self._module.moveTo(point.x, point.y, duration=duration)
 
     def click(self, point: Point, *, button: str, clicks: int) -> None:
+        """Click through PyAutoGUI."""
         self._module.click(point.x, point.y, button=button, clicks=clicks)
 
     def type_text(self, text: str, *, interval: float) -> None:
+        """Type text through PyAutoGUI."""
         self._module.write(text, interval=interval)
 
     def hotkey(self, *keys: str) -> None:
+        """Press a hotkey through PyAutoGUI."""
         self._module.hotkey(*keys)
 
     def scroll(self, clicks: int, *, point: Point | None) -> None:
+        """Optionally position the pointer and scroll through PyAutoGUI."""
         if point is not None:
             self._module.moveTo(point.x, point.y)
         self._module.scroll(clicks)
@@ -170,11 +196,14 @@ class PyAutoGUIAdapter:
         duration: float,
         button: str,
     ) -> None:
+        """Drag between absolute points through PyAutoGUI."""
         self._module.moveTo(start.x, start.y)
         self._module.dragTo(end.x, end.y, duration=duration, button=button)
 
 
 class DesktopController:
+    """Execute validated desktop input, or record it harmlessly in dry-run mode."""
+
     def __init__(
         self,
         *,
@@ -183,6 +212,7 @@ class DesktopController:
         backend: DesktopBackend | None = None,
         bounds_provider: Callable[[], ScreenRegion] | None = None,
     ) -> None:
+        """Create a controller that emits real input only when ``dry_run`` is false."""
         self.dry_run = dry_run
         self._pause = _duration(pause, "pause")
         self._backend = backend
@@ -191,6 +221,7 @@ class DesktopController:
 
     @property
     def history(self) -> tuple[ActionRecord, ...]:
+        """Return an immutable snapshot of validated action records."""
         return tuple(self._history)
 
     def _point(self, point: Point) -> None:
@@ -215,6 +246,7 @@ class DesktopController:
         return record
 
     def move_to(self, point: Point, *, duration: float = 0.2) -> ActionRecord:
+        """Validate and record a pointer movement within desktop bounds."""
         self._point(point)
         duration = _duration(duration, "duration")
         return self._dispatch(
@@ -230,6 +262,7 @@ class DesktopController:
         button: str = "left",
         clicks: int = 1,
     ) -> ActionRecord:
+        """Validate and record one or more mouse clicks."""
         self._point(point)
         if button not in VALID_BUTTONS:
             raise ValueError(f"unsupported button: {button}")
@@ -242,12 +275,15 @@ class DesktopController:
         )
 
     def double_click(self, point: Point) -> ActionRecord:
+        """Record a left-button double click at an absolute point."""
         return self.click(point, clicks=2)
 
     def right_click(self, point: Point) -> ActionRecord:
+        """Record a right click at an absolute point."""
         return self.click(point, button="right")
 
     def type_text(self, text: str, *, interval: float = 0.02) -> ActionRecord:
+        """Validate and record non-empty text input."""
         if not text:
             raise ValueError("text must not be empty")
         interval = _duration(interval, "interval")
@@ -258,6 +294,7 @@ class DesktopController:
         )
 
     def hotkey(self, *keys: str) -> ActionRecord:
+        """Validate and record a supported hotkey sequence."""
         normalized = tuple(key.casefold() for key in keys)
         if not normalized or any(key not in VALID_KEYS for key in normalized):
             raise ValueError(f"unsupported hotkey sequence: {keys}")
@@ -268,6 +305,7 @@ class DesktopController:
         )
 
     def scroll(self, clicks: int, *, point: Point | None = None) -> ActionRecord:
+        """Validate and record a signed scroll amount."""
         if isinstance(clicks, bool) or not isinstance(clicks, int):
             raise ValueError("scroll clicks must be an integer")
         if point is not None:
@@ -286,6 +324,7 @@ class DesktopController:
         duration: float = 0.5,
         button: str = "left",
     ) -> ActionRecord:
+        """Validate and record a drag between absolute desktop points."""
         self._point(start)
         self._point(end)
         duration = _duration(duration, "duration")
