@@ -27,10 +27,15 @@ from gui_agent.agent.retry import RetryPolicy
 from gui_agent.agent.types import (
     AgentAction,
     AgentDecision,
+    ClickAction,
+    DragAction,
     FinishAction,
+    HotkeyAction,
     Observation,
+    ScrollAction,
     TaskPlan,
     TaskStep,
+    TypeTextAction,
     WaitAction,
 )
 from gui_agent.control.controller import DesktopController
@@ -190,6 +195,11 @@ def build_parser() -> argparse.ArgumentParser:
         add_help=False,
         help="Build data, train, and evaluate the Week 5 adapter",
     )
+    subparsers.add_parser(
+        "evaluate",
+        add_help=False,
+        help="Run the Week 7 simulated desktop evaluation",
+    )
 
     run = subparsers.add_parser("run", help="Run the bounded GUI agent loop")
     task_group = run.add_mutually_exclusive_group(required=True)
@@ -262,6 +272,12 @@ def _training_main(argv: Sequence[str]) -> int:
     from gui_agent.training.cli import main as training_main
 
     return training_main(argv)
+
+
+def _evaluation_main(argv: Sequence[str]) -> int:
+    from gui_agent.evaluation.cli import main as evaluation_main
+
+    return evaluation_main(argv)
 
 
 class _SyntheticObserver:
@@ -363,6 +379,43 @@ def build_runtime(config: RunConfig, input_fn: InputFunction) -> GUIAgent:
     )
 
 
+def _action_preview(decision: AgentDecision) -> dict[str, object]:
+    action = decision.action
+    preview: dict[str, object] = {
+        "step_id": decision.current_step_id,
+        "action_kind": action.kind,
+    }
+    if isinstance(action, ClickAction):
+        preview.update(
+            point=[action.x, action.y],
+            button=action.button,
+            clicks=action.clicks,
+        )
+    elif isinstance(action, TypeTextAction):
+        preview["text_length"] = len(action.text)
+    elif isinstance(action, HotkeyAction):
+        preview["keys"] = list(action.keys)
+    elif isinstance(action, ScrollAction):
+        preview["clicks"] = action.clicks
+        if action.x is not None and action.y is not None:
+            preview["point"] = [action.x, action.y]
+    elif isinstance(action, DragAction):
+        preview.update(
+            start_point=[action.start_x, action.start_y],
+            end_point=[action.end_x, action.end_y],
+            duration=action.duration,
+        )
+    elif isinstance(action, WaitAction):
+        preview["seconds"] = action.seconds
+    elif isinstance(action, FinishAction):
+        preview["success"] = action.success
+    return preview
+
+
+def _action_previews(result: AgentRunResult) -> list[dict[str, object]]:
+    return [_action_preview(decision) for decision in result.decisions]
+
+
 def _write_trace(result: AgentRunResult, trace_dir: Path) -> Path:
     trace_dir.mkdir(parents=True, exist_ok=True)
     path = trace_dir / "run-summary.json"
@@ -374,6 +427,7 @@ def _write_trace(result: AgentRunResult, trace_dir: Path) -> Path:
         "decision_count": len(result.decisions),
         "result_statuses": [item.status for item in result.results],
         "action_kinds": [item.action.kind for item in result.decisions],
+        "action_previews": _action_previews(result),
     }
     path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
@@ -396,6 +450,8 @@ def main(
         return _model_smoke_main(remainder)
     if args.command == "training":
         return _training_main(remainder)
+    if args.command == "evaluate":
+        return _evaluation_main(remainder)
     if remainder:
         parser.error(f"unrecognized arguments: {' '.join(remainder)}")
     if args.provider == "openai-compatible" and not args.allow_remote_image:
@@ -466,6 +522,7 @@ def main(
         "decision_count": len(result.decisions),
         "result_count": len(result.results),
         "dry_run": not config.execute or config.provider == "fake",
+        "action_previews": _action_previews(result),
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     if config.run_dir is not None:

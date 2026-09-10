@@ -1,4 +1,3 @@
-import hashlib
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -25,6 +24,7 @@ from gui_agent.agent.types import (
     ReplanContext,
     TaskPlan,
 )
+from gui_agent.provenance import file_sha256, read_json_object, resolve_adapter_layout
 from gui_agent.types import ScreenRegion
 
 DEFAULT_QWEN_MODEL = "Qwen/Qwen3-VL-4B-Instruct"
@@ -58,35 +58,15 @@ def _default_adapter_loader(model: object, adapter_dir: Path) -> object:
     return loader(model, adapter_dir, is_trainable=False)
 
 
-def _read_json_object(path: Path, *, label: str) -> dict[str, object]:
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise ValueError(f"could not read {label}: {path}") from error
-    if not isinstance(value, dict):
-        raise ValueError(f"{label} must contain a JSON object: {path}")
-    return cast(dict[str, object], value)
-
-
 def _validated_adapter(
     adapter_path: Path,
     *,
     model_name: str,
     requested_profile: str | PromptProfile | None,
 ) -> _AdapterSpec:
-    resolved = adapter_path.resolve()
-    if not resolved.is_dir():
-        raise ValueError(f"adapter path is not a directory: {adapter_path}")
-    if (resolved / "run-manifest.json").is_file():
-        output_root = resolved
-        adapter_dir = output_root / "adapter"
-    elif resolved.name == "adapter" and (resolved.parent / "run-manifest.json").is_file():
-        output_root = resolved.parent
-        adapter_dir = resolved
-    else:
-        raise ValueError("adapter path requires a sibling or child run-manifest.json")
-    manifest = _read_json_object(
-        output_root / "run-manifest.json",
+    layout = resolve_adapter_layout(adapter_path)
+    manifest = read_json_object(
+        layout.output_root / "run-manifest.json",
         label="adapter run manifest",
     )
     if manifest.get("kind") != "gui-agent-week5-training-run":
@@ -104,8 +84,8 @@ def _validated_adapter(
         if requested.id != selected_profile.id:
             raise ValueError("adapter prompt profile does not match the requested profile")
 
-    adapter_config = _read_json_object(
-        adapter_dir / "adapter_config.json",
+    adapter_config = read_json_object(
+        layout.adapter_dir / "adapter_config.json",
         label="adapter config",
     )
     if adapter_config.get("base_model_name_or_path") != model_name:
@@ -114,15 +94,12 @@ def _validated_adapter(
     if not isinstance(raw_hashes, dict):
         raise ValueError("adapter run manifest has no output hashes")
     for filename in ("adapter_model.safetensors", "adapter_config.json"):
-        path = adapter_dir / filename
-        try:
-            actual = hashlib.sha256(path.read_bytes()).hexdigest()
-        except OSError as error:
-            raise ValueError(f"adapter file is missing: {path}") from error
+        path = layout.adapter_dir / filename
+        actual = file_sha256(path, label="adapter file")
         expected = raw_hashes.get(f"adapter/{filename}")
         if expected != actual:
             raise ValueError(f"adapter file hash mismatch: {filename}")
-    return _AdapterSpec(adapter_dir=adapter_dir, prompt_profile=selected_profile)
+    return _AdapterSpec(adapter_dir=layout.adapter_dir, prompt_profile=selected_profile)
 
 
 def _json_object(text: str) -> str:

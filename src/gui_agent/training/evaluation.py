@@ -1,7 +1,6 @@
 import hashlib
 import json
 import statistics
-import tempfile
 import time
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable
@@ -35,6 +34,7 @@ from gui_agent.agent.types import (
     TypeTextAction,
     WaitAction,
 )
+from gui_agent.provenance import adapter_provenance, atomic_write_owned_json
 from gui_agent.training.config import validate_training_output_path
 from gui_agent.types import BoundingBox, OCRDetection, Point, ScreenRegion, ScreenshotResult
 
@@ -227,37 +227,6 @@ def load_evaluation_cases(path: Path) -> tuple[EvaluationCase, ...]:
     return case_set.cases
 
 
-def _file_sha256(path: Path, *, label: str) -> str:
-    try:
-        return hashlib.sha256(path.read_bytes()).hexdigest()
-    except OSError as error:
-        raise ValueError(f"could not read {label}: {path}") from error
-
-
-def _adapter_provenance(adapter_path: Path) -> tuple[str, str, str]:
-    resolved = adapter_path.resolve()
-    if (resolved / "run-manifest.json").is_file():
-        output_root = resolved
-        adapter_dir = resolved / "adapter"
-    elif resolved.name == "adapter" and (resolved.parent / "run-manifest.json").is_file():
-        output_root = resolved.parent
-        adapter_dir = resolved
-    else:
-        raise ValueError("adapter path requires a sibling or child run-manifest.json")
-    try:
-        label = output_root.relative_to(Path.cwd().resolve()).as_posix()
-    except ValueError:
-        label = output_root.name
-    return (
-        label,
-        _file_sha256(output_root / "run-manifest.json", label="adapter run manifest"),
-        _file_sha256(
-            adapter_dir / "adapter_model.safetensors",
-            label="adapter weights",
-        ),
-    )
-
-
 def build_evaluation_condition(
     *,
     model_name: str,
@@ -270,7 +239,7 @@ def build_evaluation_condition(
             model=model_name,
             prompt_profile=selected_profile.id,
         )
-    label, manifest_sha256, weight_sha256 = _adapter_provenance(adapter_path)
+    label, manifest_sha256, weight_sha256 = adapter_provenance(adapter_path)
     return EvaluationCondition(
         model=model_name,
         prompt_profile=selected_profile.id,
@@ -432,47 +401,12 @@ def write_evaluation_report(
     *,
     overwrite: bool = False,
 ) -> None:
-    if path.suffix.lower() != ".json":
-        raise ValueError("evaluation output must be a JSON file")
-    existed = path.exists()
-    if existed:
-        if not overwrite:
-            raise ValueError(f"evaluation output already exists: {path}")
-        try:
-            stored = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as error:
-            raise ValueError("refusing to overwrite an unowned evaluation output") from error
-        if not isinstance(stored, dict) or stored.get("kind") != report.kind:
-            raise ValueError("refusing to overwrite an unowned evaluation output")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    encoded = json.dumps(
+    atomic_write_owned_json(
         report.model_dump(mode="json"),
-        ensure_ascii=False,
-        indent=2,
-        sort_keys=True,
-    ).encode("utf-8") + b"\n"
-    if not existed:
-        try:
-            with path.open("xb") as output:
-                output.write(encoded)
-        except FileExistsError as error:
-            raise ValueError(f"evaluation output already exists: {path}") from error
-        return
-    temporary_path: Path | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="wb",
-            dir=path.parent,
-            prefix=f".{path.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as temporary:
-            temporary.write(encoded)
-            temporary_path = Path(temporary.name)
-        temporary_path.replace(path)
-    finally:
-        if temporary_path is not None and temporary_path.exists():
-            temporary_path.unlink()
+        path,
+        owned_kind=report.kind,
+        overwrite=overwrite,
+    )
 
 
 def _render_case(case: EvaluationCase) -> Observation:

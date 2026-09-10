@@ -10,11 +10,31 @@ from examples import agent_demo, gui_testbed
 from gui_agent import cli
 from gui_agent.agent.loop import AgentRunResult
 from gui_agent.agent.types import (
+    AgentAction,
     AgentDecision,
+    ClickAction,
+    DragAction,
+    FinishAction,
+    HotkeyAction,
+    ScrollAction,
     StepResult,
     TypeTextAction,
+    WaitAction,
 )
 from gui_agent.types import ScreenRegion
+
+
+def test_root_cli_forwards_evaluate_arguments(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+
+    def evaluation_probe(argv: list[str]) -> int:
+        calls.append(argv)
+        return 0
+
+    monkeypatch.setattr(cli, "_evaluation_main", evaluation_probe)
+
+    assert cli.main(["evaluate", "--dry-run-plan"]) == 0
+    assert calls == [["--dry-run-plan"]]
 
 
 class RuntimeProbe:
@@ -61,7 +81,7 @@ def test_cli_help_lists_commands_and_run_safety_options(
     assert captured.value.code == 0
     output = capsys.readouterr().out
     if not command:
-        for name in ("dataset", "model-smoke", "run"):
+        for name in ("dataset", "evaluate", "model-smoke", "run"):
             assert name in output
     else:
         for option in (
@@ -379,6 +399,142 @@ def test_cli_trace_redacts_typed_text_and_writes_only_when_requested(
     assert exit_code == 0
     assert secret not in trace
     assert '"action_kinds": [\n    "type_text"' in trace
+
+
+def test_dry_run_summary_previews_click_coordinates_without_exposing_typed_text(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    secret = "potential-password-value"
+    click = ClickAction(x=321, y=654, button="left", clicks=1)
+    typed = TypeTextAction(text=secret)
+    decisions = (
+        AgentDecision(
+            current_step_id="step-1",
+            rationale_summary="Click the visible control",
+            action=click,
+            expected_outcome="The control becomes active",
+        ),
+        AgentDecision(
+            current_step_id="step-2",
+            rationale_summary="Type into the active field",
+            action=typed,
+            expected_outcome="The field updates",
+        ),
+    )
+    results = (
+        StepResult(
+            step_index=0,
+            action=click,
+            status="dry_run",
+            message="click recorded without desktop input",
+        ),
+        StepResult(
+            step_index=1,
+            action=typed,
+            status="dry_run",
+            message="type_text recorded without desktop input",
+        ),
+    )
+    runner = RuntimeProbe(run_result(decisions=decisions, results=results))
+
+    def runtime_factory(
+        _config: cli.RunConfig,
+        _input_fn: Callable[[str], str],
+    ) -> RuntimeProbe:
+        return runner
+
+    run_dir = tmp_path / "run"
+    assert cli.main(
+        [
+            "run",
+            "--task",
+            "Use the local testbed",
+            "--provider",
+            "fake",
+            "--run-dir",
+            str(run_dir),
+        ],
+        runtime_factory=runtime_factory,
+    ) == 0
+
+    stdout = capsys.readouterr().out
+    payload = json.loads(stdout)
+    trace = json.loads((run_dir / "run-summary.json").read_text(encoding="utf-8"))
+    expected = [
+        {
+            "step_id": "step-1",
+            "action_kind": "click",
+            "point": [321, 654],
+            "button": "left",
+            "clicks": 1,
+        },
+        {
+            "step_id": "step-2",
+            "action_kind": "type_text",
+            "text_length": len(secret),
+        },
+    ]
+    assert payload["action_previews"] == expected
+    assert trace["action_previews"] == expected
+    assert secret not in stdout
+    assert secret not in json.dumps(trace)
+
+
+def test_action_previews_cover_remaining_safe_action_parameters(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    finish_summary = "private completion details"
+    actions: tuple[AgentAction, ...] = (
+        HotkeyAction(keys=("ctrl", "a")),
+        ScrollAction(clicks=-3, x=10, y=20),
+        DragAction(start_x=1, start_y=2, end_x=30, end_y=40, duration=0.75),
+        WaitAction(seconds=0.5),
+        FinishAction(success=True, summary=finish_summary),
+    )
+    decisions = tuple(
+        AgentDecision(
+            current_step_id=f"step-{index}",
+            rationale_summary="Use a safe local action",
+            action=action,
+            expected_outcome="The local testbed updates",
+        )
+        for index, action in enumerate(actions, start=1)
+    )
+    runner = RuntimeProbe(run_result(decisions=decisions))
+
+    def runtime_factory(
+        _config: cli.RunConfig,
+        _input_fn: Callable[[str], str],
+    ) -> RuntimeProbe:
+        return runner
+
+    assert cli.main(
+        ["run", "--task", "Use the local testbed", "--provider", "fake"],
+        runtime_factory=runtime_factory,
+    ) == 0
+
+    stdout = capsys.readouterr().out
+    payload = json.loads(stdout)
+    assert payload["action_previews"] == [
+        {"step_id": "step-1", "action_kind": "hotkey", "keys": ["ctrl", "a"]},
+        {
+            "step_id": "step-2",
+            "action_kind": "scroll",
+            "clicks": -3,
+            "point": [10, 20],
+        },
+        {
+            "step_id": "step-3",
+            "action_kind": "drag",
+            "start_point": [1, 2],
+            "end_point": [30, 40],
+            "duration": 0.75,
+        },
+        {"step_id": "step-4", "action_kind": "wait", "seconds": 0.5},
+        {"step_id": "step-5", "action_kind": "finish", "success": True},
+    ]
+    assert finish_summary not in stdout
 
 
 def test_cli_run_dir_and_deprecated_trace_dir_are_mutually_exclusive(

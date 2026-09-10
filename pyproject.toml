@@ -45,6 +45,9 @@ ocr = [
     "torch>=2.7,<3",
     "torchvision>=0.22,<1",
 ]
+viz = [
+    "matplotlib>=3.9,<4",
+]
 
 [project.scripts]
 gui-agent = "gui_agent:main"

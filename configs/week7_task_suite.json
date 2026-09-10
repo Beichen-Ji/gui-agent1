@@ -1,0 +1,351 @@
+{
+  "schema_version": 1,
+  "kind": "gui-agent-week7-task-suite",
+  "tasks": [
+    {
+      "id": "browser-open-app",
+      "app": "browser",
+      "difficulty": "easy",
+      "instruction": "Open the Browser application.",
+      "success_criteria": "The Browser displays 'Search query'.",
+      "initial_state": {"active_app": "files"},
+      "fault_profile": "none",
+      "max_steps": 2,
+      "reference_actions": [
+        {"kind": "click", "x": 141, "y": 47},
+        {"kind": "finish", "success": true, "summary": "Browser opened"}
+      ],
+      "tags": ["navigation", "single-action"]
+    },
+    {
+      "id": "browser-select-history",
+      "app": "browser",
+      "difficulty": "easy",
+      "instruction": "Select the History tab in Browser.",
+      "success_criteria": "The selected tab reads 'History (selected)'.",
+      "initial_state": {"active_app": "browser"},
+      "fault_profile": "none",
+      "max_steps": 2,
+      "reference_actions": [
+        {"kind": "click", "x": 352, "y": 202},
+        {"kind": "finish", "success": true, "summary": "History selected"}
+      ],
+      "tags": ["tab", "single-action"]
+    },
+    {
+      "id": "browser-search-transient",
+      "app": "browser",
+      "difficulty": "medium",
+      "instruction": "Search for week7 metrics and recover if the first search is ignored.",
+      "success_criteria": "The result reads 'Search result: week7 metrics'.",
+      "initial_state": {"active_app": "browser"},
+      "fault_profile": "transient",
+      "max_steps": 7,
+      "reference_actions": [
+        {"kind": "click", "x": 531, "y": 281},
+        {"kind": "type_text", "text": "week7 metrics"},
+        {"kind": "click", "x": 1126, "y": 281},
+        {"kind": "click", "x": 640, "y": 133},
+        {"kind": "click", "x": 531, "y": 281},
+        {"kind": "click", "x": 1126, "y": 281},
+        {"kind": "finish", "success": true, "summary": "Search recovered"}
+      ],
+      "tags": ["search", "retry", "transient"]
+    },
+    {
+      "id": "browser-delayed-search",
+      "app": "browser",
+      "difficulty": "hard",
+      "instruction": "Search for delayed ready and wait for the pending result to complete.",
+      "success_criteria": "The result reads 'Search result: delayed ready'.",
+      "initial_state": {"active_app": "browser"},
+      "fault_profile": "delayed",
+      "max_steps": 5,
+      "reference_actions": [
+        {"kind": "click", "x": 531, "y": 281},
+        {"kind": "type_text", "text": "delayed ready"},
+        {"kind": "click", "x": 1126, "y": 281},
+        {"kind": "wait", "seconds": 0.75},
+        {"kind": "finish", "success": true, "summary": "Delayed result completed"}
+      ],
+      "tags": ["search", "wait", "delayed"]
+    },
+    {
+      "id": "files-open-app",
+      "app": "files",
+      "difficulty": "easy",
+      "instruction": "Open the Files application.",
+      "success_criteria": "The Files application displays 'week4-demo.txt'.",
+      "initial_state": {"active_app": "browser"},
+      "fault_profile": "none",
+      "max_steps": 2,
+      "reference_actions": [
+        {"kind": "click", "x": 384, "y": 47},
+        {"kind": "finish", "success": true, "summary": "Files opened"}
+      ],
+      "tags": ["navigation", "single-action"]
+    },
+    {
+      "id": "files-open-default",
+      "app": "files",
+      "difficulty": "easy",
+      "instruction": "Open the default local demo file.",
+      "success_criteria": "The file content contains 'WEEK4_DEMO_READY'.",
+      "initial_state": {"active_app": "files"},
+      "fault_profile": "none",
+      "max_steps": 2,
+      "reference_actions": [
+        {"kind": "click", "x": 1126, "y": 137},
+        {"kind": "finish", "success": true, "summary": "Default file opened"}
+      ],
+      "tags": ["file", "single-action"]
+    },
+    {
+      "id": "files-retype-and-open",
+      "app": "files",
+      "difficulty": "medium",
+      "instruction": "Replace the file name with week4-demo.txt and open it.",
+      "success_criteria": "The file content contains 'WEEK4_DEMO_READY'.",
+      "initial_state": {"active_app": "files"},
+      "fault_profile": "none",
+      "max_steps": 5,
+      "reference_actions": [
+        {"kind": "click", "x": 531, "y": 137},
+        {"kind": "hotkey", "keys": ["ctrl", "a"]},
+        {"kind": "type_text", "text": "week4-demo.txt"},
+        {"kind": "click", "x": 1126, "y": 137},
+        {"kind": "finish", "success": true, "summary": "Named file opened"}
+      ],
+      "tags": ["file", "text-entry", "hotkey"]
+    },
+    {
+      "id": "files-scroll-and-open",
+      "app": "files",
+      "difficulty": "hard",
+      "instruction": "Open Files, scroll the list, re-enter the demo name, and open it.",
+      "success_criteria": "The file content contains 'WEEK4_DEMO_READY'.",
+      "initial_state": {"active_app": "browser"},
+      "fault_profile": "none",
+      "max_steps": 7,
+      "reference_actions": [
+        {"kind": "click", "x": 384, "y": 47},
+        {"kind": "scroll", "clicks": -8, "x": 300, "y": 400},
+        {"kind": "click", "x": 531, "y": 137},
+        {"kind": "hotkey", "keys": ["ctrl", "a"]},
+        {"kind": "type_text", "text": "week4-demo.txt"},
+        {"kind": "click", "x": 1126, "y": 137},
+        {"kind": "finish", "success": true, "summary": "Scrolled file opened"}
+      ],
+      "tags": ["file", "scroll", "navigation"]
+    },
+    {
+      "id": "messages-open-app",
+      "app": "messages",
+      "difficulty": "easy",
+      "instruction": "Open the Messages application.",
+      "success_criteria": "The Messages application displays 'Recipient'.",
+      "initial_state": {"active_app": "browser"},
+      "fault_profile": "none",
+      "max_steps": 2,
+      "reference_actions": [
+        {"kind": "click", "x": 627, "y": 47},
+        {"kind": "finish", "success": true, "summary": "Messages opened"}
+      ],
+      "tags": ["navigation", "single-action"]
+    },
+    {
+      "id": "messages-send-greeting",
+      "app": "messages",
+      "difficulty": "medium",
+      "instruction": "Send hello week7 to alice.",
+      "success_criteria": "The inbox contains 'alice: hello week7'.",
+      "initial_state": {"active_app": "messages"},
+      "fault_profile": "none",
+      "max_steps": 6,
+      "reference_actions": [
+        {"kind": "click", "x": 640, "y": 137},
+        {"kind": "type_text", "text": "alice"},
+        {"kind": "click", "x": 531, "y": 274},
+        {"kind": "type_text", "text": "hello week7"},
+        {"kind": "click", "x": 1126, "y": 238},
+        {"kind": "finish", "success": true, "summary": "Greeting sent"}
+      ],
+      "tags": ["message", "text-entry"]
+    },
+    {
+      "id": "messages-send-status",
+      "app": "messages",
+      "difficulty": "medium",
+      "instruction": "Send evaluation ready to audit-user.",
+      "success_criteria": "The inbox contains 'audit-user: evaluation ready'.",
+      "initial_state": {"active_app": "messages"},
+      "fault_profile": "none",
+      "max_steps": 6,
+      "reference_actions": [
+        {"kind": "click", "x": 640, "y": 137},
+        {"kind": "type_text", "text": "audit-user"},
+        {"kind": "click", "x": 531, "y": 274},
+        {"kind": "type_text", "text": "evaluation ready"},
+        {"kind": "click", "x": 1126, "y": 238},
+        {"kind": "finish", "success": true, "summary": "Status sent"}
+      ],
+      "tags": ["message", "text-entry"]
+    },
+    {
+      "id": "messages-correct-and-send",
+      "app": "messages",
+      "difficulty": "hard",
+      "instruction": "Open Messages and correct the draft before sending corrected message to ops.",
+      "success_criteria": "The inbox contains 'ops: corrected message'.",
+      "initial_state": {"active_app": "files"},
+      "fault_profile": "none",
+      "max_steps": 9,
+      "reference_actions": [
+        {"kind": "click", "x": 627, "y": 47},
+        {"kind": "click", "x": 640, "y": 137},
+        {"kind": "type_text", "text": "ops"},
+        {"kind": "click", "x": 531, "y": 274},
+        {"kind": "type_text", "text": "wrong draft"},
+        {"kind": "hotkey", "keys": ["ctrl", "a"]},
+        {"kind": "type_text", "text": "corrected message"},
+        {"kind": "click", "x": 1126, "y": 238},
+        {"kind": "finish", "success": true, "summary": "Corrected message sent"}
+      ],
+      "tags": ["message", "correction", "hotkey", "navigation"]
+    },
+    {
+      "id": "settings-open-app",
+      "app": "settings",
+      "difficulty": "easy",
+      "instruction": "Open the Settings application.",
+      "success_criteria": "The Settings application displays 'Enable feature'.",
+      "initial_state": {"active_app": "browser"},
+      "fault_profile": "none",
+      "max_steps": 2,
+      "reference_actions": [
+        {"kind": "click", "x": 870, "y": 47},
+        {"kind": "finish", "success": true, "summary": "Settings opened"}
+      ],
+      "tags": ["navigation", "single-action"]
+    },
+    {
+      "id": "settings-enable-feature",
+      "app": "settings",
+      "difficulty": "easy",
+      "instruction": "Enable the feature checkbox.",
+      "success_criteria": "The checkbox reads '[x] Enable feature'.",
+      "initial_state": {"active_app": "settings"},
+      "fault_profile": "none",
+      "max_steps": 2,
+      "reference_actions": [
+        {"kind": "click", "x": 237, "y": 155},
+        {"kind": "finish", "success": true, "summary": "Feature enabled"}
+      ],
+      "tags": ["checkbox", "single-action"]
+    },
+    {
+      "id": "settings-theme-save",
+      "app": "settings",
+      "difficulty": "medium",
+      "instruction": "Change the theme to dark and save the settings.",
+      "success_criteria": "The form displays 'Theme: dark' and 'Saved'.",
+      "initial_state": {"active_app": "settings"},
+      "fault_profile": "none",
+      "max_steps": 3,
+      "reference_actions": [
+        {"kind": "click", "x": 288, "y": 259},
+        {"kind": "click", "x": 986, "y": 511},
+        {"kind": "finish", "success": true, "summary": "Dark theme saved"}
+      ],
+      "tags": ["form", "save"]
+    },
+    {
+      "id": "settings-configure-form",
+      "app": "settings",
+      "difficulty": "hard",
+      "instruction": "Enable the feature, choose dark theme, set volume to 75%, and save.",
+      "success_criteria": "The form displays '[x] Enable feature', 'Theme: dark', 'Volume: 75%', and 'Saved'.",
+      "initial_state": {"active_app": "settings"},
+      "fault_profile": "none",
+      "max_steps": 5,
+      "reference_actions": [
+        {"kind": "click", "x": 237, "y": 155},
+        {"kind": "click", "x": 288, "y": 259},
+        {"kind": "drag", "start_x": 65, "start_y": 364, "end_x": 688, "end_y": 364, "duration": 0.5},
+        {"kind": "click", "x": 986, "y": 511},
+        {"kind": "finish", "success": true, "summary": "Settings form saved"}
+      ],
+      "tags": ["form", "drag", "save"]
+    },
+    {
+      "id": "editor-open-app",
+      "app": "editor",
+      "difficulty": "easy",
+      "instruction": "Open the Editor application.",
+      "success_criteria": "The Editor displays 'Editor text'.",
+      "initial_state": {"active_app": "browser"},
+      "fault_profile": "none",
+      "max_steps": 2,
+      "reference_actions": [
+        {"kind": "click", "x": 1114, "y": 47},
+        {"kind": "finish", "success": true, "summary": "Editor opened"}
+      ],
+      "tags": ["navigation", "single-action"]
+    },
+    {
+      "id": "editor-write-save",
+      "app": "editor",
+      "difficulty": "medium",
+      "instruction": "Write week7 note in the editor and save it.",
+      "success_criteria": "The editor displays 'week7 note' and 'Saved'.",
+      "initial_state": {"active_app": "editor"},
+      "fault_profile": "none",
+      "max_steps": 4,
+      "reference_actions": [
+        {"kind": "click", "x": 640, "y": 284},
+        {"kind": "type_text", "text": "week7 note"},
+        {"kind": "hotkey", "keys": ["ctrl", "s"]},
+        {"kind": "finish", "success": true, "summary": "Editor note saved"}
+      ],
+      "tags": ["editor", "hotkey", "save"]
+    },
+    {
+      "id": "editor-find-text",
+      "app": "editor",
+      "difficulty": "medium",
+      "instruction": "Write reference target and enter target in the Find box.",
+      "success_criteria": "The Find box displays 'target'.",
+      "initial_state": {"active_app": "editor"},
+      "fault_profile": "none",
+      "max_steps": 5,
+      "reference_actions": [
+        {"kind": "click", "x": 640, "y": 284},
+        {"kind": "type_text", "text": "reference target"},
+        {"kind": "click", "x": 384, "y": 533},
+        {"kind": "type_text", "text": "target"},
+        {"kind": "finish", "success": true, "summary": "Find text entered"}
+      ],
+      "tags": ["editor", "find", "text-entry"]
+    },
+    {
+      "id": "editor-replace-scroll-save",
+      "app": "editor",
+      "difficulty": "hard",
+      "instruction": "Replace the draft with final report, scroll, and save the editor.",
+      "success_criteria": "The editor displays 'final report' and 'Saved'.",
+      "initial_state": {"active_app": "editor"},
+      "fault_profile": "none",
+      "max_steps": 7,
+      "reference_actions": [
+        {"kind": "click", "x": 640, "y": 284},
+        {"kind": "type_text", "text": "draft"},
+        {"kind": "hotkey", "keys": ["ctrl", "a"]},
+        {"kind": "type_text", "text": "final report"},
+        {"kind": "scroll", "clicks": -4, "x": 640, "y": 500},
+        {"kind": "hotkey", "keys": ["ctrl", "s"]},
+        {"kind": "finish", "success": true, "summary": "Final report saved"}
+      ],
+      "tags": ["editor", "replace", "scroll", "save"]
+    }
+  ]
+}
