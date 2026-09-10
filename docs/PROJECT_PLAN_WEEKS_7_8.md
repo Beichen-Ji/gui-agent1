@@ -611,7 +611,7 @@ git commit -m "feat: visualize Week 7 evaluation results"
 
 **Produces:** 有出处、不可比性写明的架构与能力差距分析。
 
-- [ ] **Step 1: 架构对照表**
+- [x] **Step 1: 架构对照表**
 
 | 维度 | 本项目 | UI-TARS | Claude Computer Use |
 |---|---|---|---|
@@ -624,15 +624,15 @@ git commit -m "feat: visualize Week 7 evaluation results"
 | 安全 | 默认 dry-run + 逐动作人工确认 | 无内建人工确认 | 依赖调用方实现 |
 | 训练 | 100 条 ScreenAgent 样本的 QLoRA | 大规模 GUI 轨迹预训练 + DPO | 专有训练 |
 
-- [ ] **Step 2: 公开指标引用**
+- [x] **Step 2: 公开指标引用**
 
 只引用 PDF 参考资料列出的来源（UI-TARS arXiv 2501.12326、Claude Computer Use 官方文档、ScreenAgent、WebArena arXiv 2307.13854）与官方文档，每个数字标注来源与查阅日期。**本机网络受限时先用 `待补充引用` 占位，不得凭记忆填数字。**
 
-- [ ] **Step 3: 不可比声明**
+- [x] **Step 3: 不可比声明**
 
 明确写出：它们的分数来自 OSWorld / AndroidWorld / ScreenSpot 等公开基准，本项目的 n=20 合成任务集在任务分布、环境真实度和样本量上均不同，任何跨表比较都无效。本节的价值在于**指出差距来源和补齐所需的工作量**，而不是排名。
 
-- [ ] **Step 4: 差距清单与代价估计**
+- [x] **Step 4: 差距清单与代价估计**
 
 逐条列出（原生 grounding 训练、大规模轨迹数据、长程记忆、跨平台动作空间……），每条写明“若要补齐需要什么”。这是技术报告“局限与后续”的直接素材。
 
