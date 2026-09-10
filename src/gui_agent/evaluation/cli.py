@@ -8,8 +8,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal, TypeAlias, cast
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
+from gui_agent._models import StrictFrozenModel
 from gui_agent.agent.planner import FakePlanner
 from gui_agent.agent.prompts import PROMPT_PROFILES
 from gui_agent.agent.qwen import QwenTransformersPlanner
@@ -28,11 +29,7 @@ from gui_agent.simulation.harness import ObservationMode
 Provider: TypeAlias = Literal["fake", "qwen"]
 
 
-class _StrictFrozenModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-
-class EvaluationConditionTemplate(_StrictFrozenModel):
+class EvaluationConditionTemplate(StrictFrozenModel):
     name: str = Field(min_length=1, max_length=120)
     model: str = Field(min_length=1, max_length=500)
     prompt_profile: str
@@ -81,7 +78,7 @@ class EvaluationConditionTemplate(_StrictFrozenModel):
         )
 
 
-class EvaluationConditionSet(_StrictFrozenModel):
+class EvaluationConditionSet(StrictFrozenModel):
     schema_version: Literal[1] = 1
     kind: Literal["gui-agent-week7-condition-set"] = "gui-agent-week7-condition-set"
     conditions: tuple[EvaluationConditionTemplate, ...] = Field(min_length=1)
@@ -97,7 +94,7 @@ class EvaluationConditionSet(_StrictFrozenModel):
         return self
 
 
-class ExpandedCondition(_StrictFrozenModel):
+class ExpandedCondition(StrictFrozenModel):
     id: str = Field(min_length=1, max_length=120)
     name: str
     model: str
@@ -110,7 +107,7 @@ class ExpandedCondition(_StrictFrozenModel):
     per_task_estimated_seconds: float
 
 
-class EvaluationRunSpec(_StrictFrozenModel):
+class EvaluationRunSpec(StrictFrozenModel):
     id: str = Field(min_length=1, max_length=240)
     condition: ExpandedCondition
     task: EvaluationTask

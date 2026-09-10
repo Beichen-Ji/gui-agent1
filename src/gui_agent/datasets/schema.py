@@ -1,18 +1,15 @@
 from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, model_validator
 
+from gui_agent._models import StrictFrozenModel
 from gui_agent.agent.types import AgentAction
 
 DatasetSource = Literal["screenagent", "mind2web", "webarena"]
 RecordType = Literal["trajectory_step", "task"]
 
 
-class _StrictFrozenModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-
-class NormalizedGUIRecord(_StrictFrozenModel):
+class NormalizedGUIRecord(StrictFrozenModel):
     schema_version: Literal[1] = 1
     source: DatasetSource
     record_type: RecordType
@@ -38,7 +35,7 @@ class NormalizedGUIRecord(_StrictFrozenModel):
         return self
 
 
-class DatasetManifest(_StrictFrozenModel):
+class DatasetManifest(StrictFrozenModel):
     schema_version: Literal[1] = 1
     source: DatasetSource
     source_url: str = Field(min_length=1, max_length=1000)

@@ -1,18 +1,15 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import Field, field_validator
 
+from gui_agent._models import StrictFrozenModel
 from gui_agent.agent.types import AgentAction
 from gui_agent.datasets.schema import DatasetSource
 
 Sha256 = str
 
 
-class _StrictFrozenModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-
-class TrainingExample(_StrictFrozenModel):
+class TrainingExample(StrictFrozenModel):
     schema_version: Literal[1] = 1
     sample_id: str = Field(min_length=1, max_length=500)
     source: DatasetSource
@@ -24,7 +21,7 @@ class TrainingExample(_StrictFrozenModel):
     source_revision: str = Field(min_length=1, max_length=500)
 
 
-class SourceSplitCounts(_StrictFrozenModel):
+class SourceSplitCounts(StrictFrozenModel):
     seen: int = Field(ge=0)
     accepted: int = Field(ge=0)
     skipped: int = Field(ge=0)
@@ -32,7 +29,7 @@ class SourceSplitCounts(_StrictFrozenModel):
     validation: int = Field(ge=0)
 
 
-class TrainingSplit(_StrictFrozenModel):
+class TrainingSplit(StrictFrozenModel):
     train: tuple[TrainingExample, ...]
     validation: tuple[TrainingExample, ...]
     seed: int = Field(ge=0)
@@ -46,7 +43,7 @@ class TrainingSplit(_StrictFrozenModel):
     source_licenses: dict[DatasetSource, str]
 
 
-class TrainingManifest(_StrictFrozenModel):
+class TrainingManifest(StrictFrozenModel):
     schema_version: Literal[1] = 1
     kind: Literal["gui-agent-week5-training"] = "gui-agent-week5-training"
     seed: int = Field(ge=0)

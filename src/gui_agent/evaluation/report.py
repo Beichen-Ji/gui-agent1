@@ -1,18 +1,15 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
+from gui_agent._models import StrictFrozenModel
 from gui_agent.evaluation.metrics import SuiteMetrics, TaskOutcome, calculate_suite_metrics
 from gui_agent.provenance import atomic_write_owned_json
 from gui_agent.simulation.harness import ObservationMode
 
 
-class _StrictFrozenModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-
-class EvaluationContext(_StrictFrozenModel):
+class EvaluationContext(StrictFrozenModel):
     suite_sha256: str
     conditions_sha256: str
     git_revision: str = Field(min_length=1, max_length=80)
@@ -55,7 +52,7 @@ class EvaluationContext(_StrictFrozenModel):
         return self
 
 
-class EvaluationReport(_StrictFrozenModel):
+class EvaluationReport(StrictFrozenModel):
     kind: Literal["gui-agent-week7-evaluation"] = "gui-agent-week7-evaluation"
     schema_version: Literal[1] = 1
     suite_sha256: str

@@ -1,16 +1,13 @@
 from dataclasses import dataclass
 from typing import Annotated, Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, model_validator
 
+from gui_agent._models import StrictFrozenModel
 from gui_agent.types import OCRDetection, ScreenshotResult
 
 
-class _StrictFrozenModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-
-class ClickAction(_StrictFrozenModel):
+class ClickAction(StrictFrozenModel):
     kind: Literal["click"] = "click"
     x: int
     y: int
@@ -18,24 +15,24 @@ class ClickAction(_StrictFrozenModel):
     clicks: int = Field(default=1, ge=1, le=2)
 
 
-class TypeTextAction(_StrictFrozenModel):
+class TypeTextAction(StrictFrozenModel):
     kind: Literal["type_text"] = "type_text"
     text: str = Field(min_length=1, max_length=500)
 
 
-class HotkeyAction(_StrictFrozenModel):
+class HotkeyAction(StrictFrozenModel):
     kind: Literal["hotkey"] = "hotkey"
     keys: tuple[str, ...] = Field(min_length=1, max_length=4)
 
 
-class ScrollAction(_StrictFrozenModel):
+class ScrollAction(StrictFrozenModel):
     kind: Literal["scroll"] = "scroll"
     clicks: int = Field(ge=-20, le=20)
     x: int | None = None
     y: int | None = None
 
 
-class DragAction(_StrictFrozenModel):
+class DragAction(StrictFrozenModel):
     kind: Literal["drag"] = "drag"
     start_x: int
     start_y: int
@@ -44,12 +41,12 @@ class DragAction(_StrictFrozenModel):
     duration: float = Field(default=0.5, ge=0.0, le=5.0)
 
 
-class WaitAction(_StrictFrozenModel):
+class WaitAction(StrictFrozenModel):
     kind: Literal["wait"] = "wait"
     seconds: float = Field(ge=0.0, le=5.0)
 
 
-class FinishAction(_StrictFrozenModel):
+class FinishAction(StrictFrozenModel):
     kind: Literal["finish"] = "finish"
     success: bool
     summary: str = Field(min_length=1, max_length=500)
@@ -79,12 +76,12 @@ FailureReason: TypeAlias = Literal[
 ]
 
 
-class TaskStep(_StrictFrozenModel):
+class TaskStep(StrictFrozenModel):
     id: str = Field(min_length=1, max_length=64)
     description: str = Field(min_length=1, max_length=500)
 
 
-class TaskPlan(_StrictFrozenModel):
+class TaskPlan(StrictFrozenModel):
     goal: str = Field(min_length=1, max_length=1000)
     steps: tuple[TaskStep, ...] = Field(min_length=1, max_length=20)
 
@@ -96,13 +93,13 @@ class TaskPlan(_StrictFrozenModel):
         return self
 
 
-class StepProgress(_StrictFrozenModel):
+class StepProgress(StrictFrozenModel):
     step_id: str = Field(min_length=1, max_length=64)
     status: Literal["pending", "active", "completed", "failed"]
     attempts: int = Field(default=0, ge=0)
 
 
-class PlanProgress(_StrictFrozenModel):
+class PlanProgress(StrictFrozenModel):
     steps: tuple[StepProgress, ...] = Field(min_length=1, max_length=20)
     active_step_id: str = Field(min_length=1, max_length=64)
     replan_count: int = Field(default=0, ge=0, le=1)
@@ -234,7 +231,7 @@ class PlanProgress(_StrictFrozenModel):
         return self.model_copy(update={"steps": tuple(updated)})
 
 
-class ReplanContext(_StrictFrozenModel):
+class ReplanContext(StrictFrozenModel):
     reason_code: str = Field(min_length=1, max_length=64)
     summary: str = Field(min_length=1, max_length=500)
 
@@ -291,21 +288,21 @@ def reconcile_revised_plan(
     return revised, revised_progress
 
 
-class AgentDecision(_StrictFrozenModel):
+class AgentDecision(StrictFrozenModel):
     current_step_id: str = Field(min_length=1, max_length=64)
     rationale_summary: str = Field(min_length=1, max_length=500)
     action: AgentAction
     expected_outcome: str = Field(min_length=1, max_length=500)
 
 
-class StepResult(_StrictFrozenModel):
+class StepResult(StrictFrozenModel):
     step_index: int = Field(ge=0)
     action: AgentAction
     status: Literal["dry_run", "executed", "denied", "failed"]
     message: str = Field(min_length=1, max_length=500)
 
 
-class VerificationResult(_StrictFrozenModel):
+class VerificationResult(StrictFrozenModel):
     passed: bool
     summary: str = Field(min_length=1, max_length=500)
     reason_code: FailureReason | None = None
@@ -323,7 +320,7 @@ class VerificationResult(_StrictFrozenModel):
         return self
 
 
-class RetryDecision(_StrictFrozenModel):
+class RetryDecision(StrictFrozenModel):
     retry: bool
     delay_seconds: float = Field(default=0.0, ge=0.0, le=5.0)
     reason_code: FailureReason

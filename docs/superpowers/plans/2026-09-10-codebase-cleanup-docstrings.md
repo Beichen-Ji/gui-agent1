@@ -105,7 +105,7 @@ git commit -m "test: protect the public observation cache contract"
 - Produces: `gui_agent._models.StrictFrozenModel`
 - Preserves: strict input validation, forbidden extras, frozen instances, and every concrete schema class
 
-- [ ] **Step 1: Write a failing shared-base test**
+- [x] **Step 1: Write a failing shared-base test**
 
 Create `tests/test_shared_models.py`:
 
@@ -131,7 +131,7 @@ def test_strict_frozen_model_preserves_the_repository_schema_policy() -> None:
         model.value = 2
 ```
 
-- [ ] **Step 2: Verify the test fails because the module does not exist**
+- [x] **Step 2: Verify the test fails because the module does not exist**
 
 ```powershell
 uv run --no-sync pytest tests/test_shared_models.py -q
@@ -139,7 +139,7 @@ uv run --no-sync pytest tests/test_shared_models.py -q
 
 Expected: collection fails with `ModuleNotFoundError: gui_agent._models`.
 
-- [ ] **Step 3: Add the canonical model base and migrate consumers**
+- [x] **Step 3: Add the canonical model base and migrate consumers**
 
 Create the shared implementation:
 
@@ -157,7 +157,7 @@ class StrictFrozenModel(BaseModel):
 
 Replace each private `_StrictFrozenModel` definition with an import of `StrictFrozenModel`, update concrete base classes, and remove now-unused `BaseModel`/`ConfigDict` imports. Do not change any concrete field or validator.
 
-- [ ] **Step 4: Run schema-focused tests and static checks**
+- [x] **Step 4: Run schema-focused tests and static checks**
 
 ```powershell
 uv run --no-sync pytest tests/test_shared_models.py tests/test_agent_types.py `

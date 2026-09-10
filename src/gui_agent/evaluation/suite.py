@@ -3,8 +3,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
+from gui_agent._models import StrictFrozenModel
 from gui_agent.agent.planner import FakePlanner
 from gui_agent.agent.types import (
     AgentAction,
@@ -30,11 +31,7 @@ Difficulty: TypeAlias = Literal["easy", "medium", "hard"]
 _QUOTED_TEXT = re.compile(r"'([^']+)'")
 
 
-class _StrictFrozenModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-
-class EvaluationTask(_StrictFrozenModel):
+class EvaluationTask(StrictFrozenModel):
     id: str = Field(min_length=1, max_length=80)
     app: AppId
     difficulty: Difficulty
@@ -80,7 +77,7 @@ class EvaluationTask(_StrictFrozenModel):
         return self
 
 
-class EvaluationTaskSuite(_StrictFrozenModel):
+class EvaluationTaskSuite(StrictFrozenModel):
     schema_version: Literal[1] = 1
     kind: Literal["gui-agent-week7-task-suite"] = "gui-agent-week7-task-suite"
     tasks: tuple[EvaluationTask, ...]

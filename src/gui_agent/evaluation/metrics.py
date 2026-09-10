@@ -3,26 +3,23 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, model_validator
 
+from gui_agent._models import StrictFrozenModel
 from gui_agent.agent.loop import AgentRunResult
 from gui_agent.agent.types import FailureReason
 from gui_agent.evaluation.suite import Difficulty, EvaluationTask
 from gui_agent.simulation.apps import AppId
 
 
-class _StrictFrozenModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-
-class TimingBreakdown(_StrictFrozenModel):
+class TimingBreakdown(StrictFrozenModel):
     wall_ms: float = Field(ge=0.0)
     planner_ms: float = Field(ge=0.0)
     perception_ms: float = Field(ge=0.0)
     execution_ms: float = Field(ge=0.0)
 
 
-class TaskOutcome(_StrictFrozenModel):
+class TaskOutcome(StrictFrozenModel):
     task_id: str = Field(min_length=1, max_length=80)
     app: AppId
     difficulty: Difficulty
@@ -53,7 +50,7 @@ class TaskOutcome(_StrictFrozenModel):
         return self
 
 
-class SuiteMetrics(_StrictFrozenModel):
+class SuiteMetrics(StrictFrozenModel):
     task_count: int = Field(ge=0)
     valid_count: int = Field(ge=0)
     success_rate: float = Field(ge=0.0, le=1.0)
